@@ -6,8 +6,7 @@ function Assert-RequiredProperties {
 
     .DESCRIPTION
         Used by consumer repos to validate JSON config entries without
-        duplicating the PS 5.1-compatible Get-Member + IsNullOrWhiteSpace
-        loop.
+        duplicating the Get-Member + IsNullOrWhiteSpace loop.
 
     .PARAMETER Object
         The PSCustomObject to validate (e.g. a single config entry).
@@ -36,9 +35,7 @@ function Assert-RequiredProperties {
         [string] $Context
     )
 
-    # Get-Member -MemberType NoteProperty is the reliable way to enumerate
-    # properties created by ConvertFrom-Json in PS 5.1 and PS 7.
-    $members = (Get-Member -InputObject $Object -MemberType NoteProperty).Name
+    $members = $Object.PSObject.Properties.Name
 
     # Collect all errors before throwing so the consumer sees the full picture
     # in one run rather than fixing one property at a time.
@@ -60,8 +57,8 @@ function Assert-RequiredProperties {
                        $value -isnot [string]) {
             @($value).Count -eq 0
         } else {
-            # Numeric properties (e.g. cpuCount) are [int] in PS 5.1;
-            # cast to [string] so IsNullOrWhiteSpace receives the right type.
+            # Cast to [string] so IsNullOrWhiteSpace receives the right type
+            # regardless of whether the value is a string, int, etc.
             [string]::IsNullOrWhiteSpace([string]$value)
         }
         if ($isEmpty) {
