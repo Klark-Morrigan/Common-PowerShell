@@ -1,0 +1,64 @@
+name: CI (Docker target)
+
+# Reusable workflow for repos whose integration tests connect to a Docker
+# container via SSH (Infrastructure-GitHubRunners pattern). Builds the SSH
+# test image with GHA layer caching, then runs Pester directly on the host
+# so the tests can control Docker themselves.
+#
+# Consumer repos call this from their own workflow:
+#
+#   jobs:
+#     ci-docker-target:
+#       uses: VitaliiAndreev/Infrastructure-Common/.github/workflows/ci-powershell-docker-target.yml@master
+
+on:
+  pull_request:
+    branches: [ main, master ]
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  # Runs when this workflow is triggered directly on Infrastructure-Common
+  # (pull_request / workflow_dispatch). Uses the local action path so the
+  # action can be resolved even before this branch is merged to master.
+  integration-local:
+    name: Integration (PowerShell 7) - Docker host SSH target
+    runs-on: ubuntu-latest
+    if: ${{ github.repository == 'VitaliiAndreev/Infrastructure-Common' }}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Scan for integration tests
+        id: scan
+        uses: ./.github/actions/scan-integration-tests
+        with:
+          test-dir: Tests/Integration.DockerTarget
+
+      - if: ${{ steps.scan.outputs.has-tests == 'true' }}
+        uses: ./.github/actions/build-ssh-test-image
+
+      - if: ${{ steps.scan.outputs.has-tests == 'true' }}
+        uses: ./.github/actions/run-ssh-integration-tests
+
+  # Runs when a consumer repo calls this workflow via workflow_call. Uses
+  # the pinned external action path (requires the action to be on master).
+  integration-consumer:
+    name: Integration (PowerShell 7) - Docker host SSH target
+    runs-on: ubuntu-latest
+    if: ${{ github.repository != 'VitaliiAndreev/Infrastructure-Common' }}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Scan for integration tests
+        id: scan
+        uses: VitaliiAndreev/Infrastructure-Common/.github/actions/scan-integration-tests@master
+        with:
+          test-dir: Tests/Integration.DockerTarget
+
+      - if: ${{ steps.scan.outputs.has-tests == 'true' }}
+        uses: VitaliiAndreev/Infrastructure-Common/.github/actions/build-ssh-test-image@master
+
+      - if: ${{ steps.scan.outputs.has-tests == 'true' }}
+        uses: VitaliiAndreev/Infrastructure-Common/.github/actions/run-ssh-integration-tests@master

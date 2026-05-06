@@ -1,0 +1,25 @@
+name: Run SSH integration tests
+description: >
+  Installs Pester and runs *.Tests.ps1 files under
+  Tests/Integration.DockerTarget on the host runner. Used by
+  ci-powershell-docker-target.yml after the SSH test image has been built.
+  Tests run under PowerShell 7 only.
+
+runs:
+  using: composite
+  steps:
+    - name: Install Pester
+      shell: pwsh
+      run: |
+        Install-Module Pester -MinimumVersion 5.0 -Scope CurrentUser -Force -SkipPublisherCheck
+        Import-Module Pester -MinimumVersion 5.0 -ErrorAction Stop
+
+    - name: Run SSH integration tests
+      shell: pwsh
+      run: |
+        $config = New-PesterConfiguration
+        $config.Run.Path         = 'Tests/Integration.DockerTarget'
+        $config.Output.Verbosity = 'Detailed'
+        $config.Run.PassThru     = $true
+        $result = Invoke-Pester -Configuration $config
+        if ($result.FailedCount -gt 0) { exit 1 }

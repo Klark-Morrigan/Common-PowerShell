@@ -7,10 +7,10 @@
     Called by the run-integration-tests composite action in CI, and by the
     root-level Run-IntegrationTests.ps1 wrapper for local dev.
 
-    Each *.Tests.ps1 file found under <TestsRoot>\Tests\Integration\ is run
-    in its own mcr.microsoft.com/powershell container so integration tests
-    never affect the host environment. Local and CI runs use this same script,
-    so behaviour is identical in both environments.
+    Each *.Tests.ps1 file found under <TestsRoot>\Tests\Integration.DockerHost\
+    is run in its own mcr.microsoft.com/powershell container so integration
+    tests never affect the host environment. Local and CI runs use this same
+    script, so behaviour is identical in both environments.
 
     Also injects the shared Module.Tests.ps1 from this action directory, which
     verifies that every FunctionsToExport entry is callable after Import-Module.
@@ -27,8 +27,8 @@
     Unit tests cover 5.1 compatibility via ci-powershell.yml on windows-latest.
 
 .PARAMETER TestsRoot
-    Root directory of the repo under test. Tests\Integration\ must be a
-    direct descendant.
+    Root directory of the repo under test. Tests\Integration.DockerHost\ must
+    be a direct descendant.
 
 .PARAMETER DockerImage
     Docker image to run tests in. Defaults to mcr.microsoft.com/powershell:latest.
@@ -45,12 +45,53 @@
 #>
 
 param(
-    [string] $TestsRoot   = $PSScriptRoot,
-    [string] $DockerImage = 'mcr.microsoft.com/powershell:latest'
+    [string] $TestsRoot      = $PSScriptRoot,
+    [string] $DockerImage    = 'mcr.microsoft.com/powershell:latest',
+    # Pre-discovered by the workflow scan step to avoid scanning twice.
+    # Comma-separated absolute paths; empty string triggers internal discovery.
+    [string] $TestFilePaths  = '',
+    # Pre-discovered module directory name from the workflow scan step.
+    # Empty string triggers internal detection.
+    [string] $ModuleDirName  = ''
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+. ([IO.Path]::Combine($PSScriptRoot, '..', 'Helpers.ps1'))
+
+# ---------------------------------------------------------------------------
+# Pure helper functions.
+# ---------------------------------------------------------------------------
+
+# Splits a comma-separated list of absolute paths into FileInfo objects,
+# dropping any empty entries produced by consecutive commas.
+function ConvertTo-TestFileInfos {
+    param([string] $CsvPaths)
+    $items = @($CsvPaths -split ',' |
+        Where-Object { $_ } |
+        ForEach-Object { [System.IO.FileInfo]$_ })
+    # Unary comma prevents PowerShell from unrolling a single-element or empty
+    # array when the caller assigns the return value without @() wrapping.
+    , $items
+}
+
+# Converts an absolute host path to its /repo/-prefixed container equivalent,
+# normalising backslashes to forward slashes for Linux container paths.
+function Get-ContainerRelativePath {
+    param(
+        [string]             $ResolvedRoot,
+        [System.IO.FileInfo] $File
+    )
+    $rel = $File.FullName.Substring($ResolvedRoot.Length).TrimStart([IO.Path]::DirectorySeparatorChar)
+    "/repo/$($rel.Replace('\', '/'))"
+}
+
+# ---------------------------------------------------------------------------
+# Main execution - skipped when dot-sourced for unit testing.
+# ---------------------------------------------------------------------------
+
+if ($MyInvocation.InvocationName -ne '.') {
 
 # ---------------------------------------------------------------------------
 # Verify Docker is available.
@@ -62,12 +103,20 @@ if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
 
 # ---------------------------------------------------------------------------
 # Discover integration test files.
+#   When called from the workflow, pre-discovered values are passed in via
+#   $TestFilePaths and $ModuleDirName to avoid repeating the filesystem scan.
+#   When called directly (e.g. local dev), both params are empty and discovery
+#   runs here as before.
 # ---------------------------------------------------------------------------
 
-$integrationDir = [IO.Path]::Combine($TestsRoot, 'Tests', 'Integration')
+$integrationDir = [IO.Path]::Combine($TestsRoot, 'Tests', 'Integration.DockerHost')
 
-$testFiles = Get-ChildItem -Path $integrationDir `
-    -Filter '*.Tests.ps1' -Recurse -ErrorAction SilentlyContinue
+if ($TestFilePaths) {
+    $testFiles = ConvertTo-TestFileInfos -CsvPaths $TestFilePaths
+} else {
+    $testFiles = @(Get-ChildItem -Path $integrationDir `
+        -Filter '*.Tests.ps1' -Recurse -ErrorAction SilentlyContinue)
+}
 
 # ---------------------------------------------------------------------------
 # Run each test file in its own container.
@@ -85,9 +134,11 @@ $resolvedRoot = (Resolve-Path $TestsRoot).Path
 #   TestsRoot whose name matches a .psd1 inside it.
 # ---------------------------------------------------------------------------
 
-$moduleDir = Get-ChildItem -Path $TestsRoot -Directory |
-    Where-Object { Test-Path ([IO.Path]::Combine($_.FullName, "$($_.Name).psd1")) } |
-    Select-Object -First 1
+if ($ModuleDirName) {
+    $moduleDir = [System.IO.DirectoryInfo][IO.Path]::Combine($TestsRoot, $ModuleDirName)
+} else {
+    $moduleDir = Find-ModuleDirectory -RootPath $TestsRoot
+}
 
 $sharedIntegrationTest = [IO.Path]::Combine($PSScriptRoot, 'Module.Tests.ps1')
 $resolvedActionDir     = (Resolve-Path $PSScriptRoot).Path
@@ -103,12 +154,7 @@ if (-not $testFiles -and -not $hasSharedTest) {
 $failed = 0
 
 foreach ($file in $testFiles) {
-    # Build a container-relative path with forward slashes regardless of host
-    # OS, e.g. Tests/Integration/Foo.Tests.ps1.
-    # GetRelativePath handles both Windows and Linux path separators.
-    $relativePath = $file.FullName.Substring($resolvedRoot.Length).TrimStart([IO.Path]::DirectorySeparatorChar)
-    $relativePath = $relativePath.Replace('\', '/')
-    $containerPath = "/repo/$relativePath"
+    $containerPath = Get-ContainerRelativePath -ResolvedRoot $resolvedRoot -File $file
 
     Write-Host ''
     Write-Host "---- $($file.Name) ----" -ForegroundColor Cyan
@@ -182,3 +228,5 @@ if ($failed -gt 0) {
 }
 
 Write-Host 'All integration tests passed.' -ForegroundColor Green
+
+} # end if ($MyInvocation.InvocationName -ne '.')

@@ -8,8 +8,11 @@
     root-level Run-Tests.ps1 wrapper for local dev.
 
     Installs Pester 5 if not already present, then runs every *.Tests.ps1
-    file found under <TestsRoot>\Tests\, excluding Tests\Integration\ (which
-    requires Docker - see run-integration-tests action).
+    file found under <TestsRoot>\Tests\, excluding:
+    - Tests\Integration.DockerHost\ - tests run inside a Docker container
+      (see run-integration-tests action).
+    - Tests\Integration.DockerTarget\ - tests run on the host and connect
+      via SSH to a Docker container (see build-ssh-test-image action).
 
     Also injects the shared Module.Tests.ps1 from this action directory,
     which verifies that every Public\*.ps1 file is registered in the module
@@ -32,6 +35,40 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+. ([IO.Path]::Combine($PSScriptRoot, '..', 'Helpers.ps1'))
+
+# ---------------------------------------------------------------------------
+# Pure helper functions.
+# ---------------------------------------------------------------------------
+
+# Returns all *.Tests.ps1 files under TestsDir, excluding the
+# Integration.DockerHost and Integration.DockerTarget subdirectories
+# (those require Docker and are run by separate workflows).
+function Get-UnitTestFiles {
+    param([string] $TestsDir)
+
+    $excludedPrefixes = @('Integration.DockerHost', 'Integration.DockerTarget') |
+        ForEach-Object {
+            $dir = [IO.Path]::Combine($TestsDir, $_)
+            if (Test-Path $dir) {
+                (Get-Item $dir).FullName.TrimEnd('\') + '\'
+            }
+        } |
+        Where-Object { $_ }
+
+    Get-ChildItem -Path $TestsDir -Filter '*.Tests.ps1' -Recurse -ErrorAction SilentlyContinue |
+        Where-Object {
+            $path = $_.FullName
+            -not ($excludedPrefixes | Where-Object { $path.StartsWith($_) })
+        }
+}
+
+# ---------------------------------------------------------------------------
+# Main execution - skipped when dot-sourced for unit testing.
+# ---------------------------------------------------------------------------
+
+if ($MyInvocation.InvocationName -ne '.') {
+
 # ---------------------------------------------------------------------------
 # Ensure Pester 5 is available.
 #   Pester 3 ships with Windows PowerShell 5.1 and is incompatible with our
@@ -52,22 +89,13 @@ if (-not $pester) {
 Import-Module Pester -MinimumVersion 5.0
 
 # ---------------------------------------------------------------------------
-# Discover test files - exclude Tests\Integration\ (Docker only).
+# Discover test files - exclude Integration.DockerHost\ and
+# Integration.DockerTarget\ (both require Docker).
 # ---------------------------------------------------------------------------
 
-$integrationDir = [IO.Path]::Combine($TestsRoot, 'Tests', 'Integration')
-$integrationPath = $null
-if (Test-Path $integrationDir) {
-    # Normalise so StartsWith works regardless of trailing separator.
-    $integrationPath = (Get-Item $integrationDir).FullName.TrimEnd('\') + '\'
-}
+$testsDir = [IO.Path]::Combine($TestsRoot, 'Tests')
 
-$testFiles = Get-ChildItem -Path ([IO.Path]::Combine($TestsRoot, 'Tests')) `
-    -Filter '*.Tests.ps1' -Recurse -ErrorAction SilentlyContinue |
-    Where-Object {
-        -not $integrationPath -or
-        -not $_.FullName.StartsWith($integrationPath)
-    }
+$testFiles = Get-UnitTestFiles -TestsDir $testsDir
 
 # ---------------------------------------------------------------------------
 # Inject the shared module registration test.
@@ -77,10 +105,7 @@ $testFiles = Get-ChildItem -Path ([IO.Path]::Combine($TestsRoot, 'Tests')) `
 #   so the shared test file can locate the module without knowing the repo name.
 # ---------------------------------------------------------------------------
 
-$moduleDir = Get-ChildItem -Path $TestsRoot -Directory |
-    Where-Object { Test-Path ([IO.Path]::Combine($_.FullName, "$($_.Name).psd1")) } |
-    Select-Object -First 1
-
+$moduleDir        = Find-ModuleDirectory -RootPath $TestsRoot
 $sharedModuleTest = [IO.Path]::Combine($PSScriptRoot, 'Module.Tests.ps1')
 
 if ($moduleDir -and (Test-Path $sharedModuleTest)) {
@@ -97,7 +122,8 @@ if (-not $testFiles) {
 
 $config = New-PesterConfiguration
 # Pass individual file paths so Pester does not re-discover the Tests\ folder
-# (which would include Integration\ even though it was filtered above).
+# (which would include Integration.DockerHost\ and Integration.DockerTarget\
+# even though they were filtered above).
 $config.Run.Path              = @($testFiles.FullName)
 $config.Output.Verbosity      = 'Detailed'
 $config.TestResult.Enabled    = $true
@@ -112,3 +138,5 @@ if ($result.FailedCount -gt 0) {
     Write-Host "$($result.FailedCount) test(s) failed." -ForegroundColor Red
     exit 1
 }
+
+} # end if ($MyInvocation.InvocationName -ne '.')
