@@ -1,0 +1,47 @@
+name: Scan for integration tests
+description: >
+  Discovers *.Tests.ps1 files under the given test directory and optionally
+  detects the module directory. Outputs are consumed by subsequent steps to
+  skip the rest of the job when no tests are found, and to pass pre-discovered
+  paths to execution scripts so they do not need to re-scan the filesystem.
+
+inputs:
+  test-dir:
+    description: Relative path to the directory to scan for *.Tests.ps1 files.
+    required: true
+  check-module-dir:
+    description: >
+      When 'true', also checks for a module directory (a subdirectory whose
+      name matches its .psd1). Needed for Docker-host runs that inject the
+      shared module exports test via Module.Tests.ps1.
+    required: false
+    default: 'false'
+
+outputs:
+  has-tests:
+    description: "'true' if any tests or a qualifying module directory were found."
+    value: ${{ steps.scan.outputs.has-tests }}
+  test-file-paths:
+    description: >
+      Comma-separated absolute paths of discovered *.Tests.ps1 files.
+      Empty when no test files are found.
+    value: ${{ steps.scan.outputs.test-file-paths }}
+  module-dir:
+    description: >
+      Name of the detected module directory (the subdirectory whose name
+      matches its .psd1). Empty when none is found or check-module-dir is
+      'false'.
+    value: ${{ steps.scan.outputs.module-dir }}
+
+runs:
+  using: composite
+  steps:
+    - name: Scan
+      id: scan
+      shell: pwsh
+      # ${{ github.action_path }} resolves to the directory where the action's
+      # files were downloaded. Find-IntegrationTests.ps1 is co-located there.
+      run: |
+        & "${{ github.action_path }}/Find-IntegrationTests.ps1" `
+          -TestDir        '${{ inputs.test-dir }}' `
+          -CheckModuleDir:('${{ inputs.check-module-dir }}' -eq 'true')

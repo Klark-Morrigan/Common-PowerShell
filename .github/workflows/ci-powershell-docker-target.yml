@@ -28,23 +28,18 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
-      - uses: ./.github/actions/build-ssh-test-image
 
-      - name: Install Pester
-        shell: pwsh
-        run: |
-          Install-Module Pester -MinimumVersion 5.0 -Scope CurrentUser -Force -SkipPublisherCheck
-          Import-Module Pester -MinimumVersion 5.0 -ErrorAction Stop
+      - name: Scan for integration tests
+        id: scan
+        uses: ./.github/actions/scan-integration-tests
+        with:
+          test-dir: Tests/Integration.DockerTarget
 
-      - name: Run SSH integration tests
-        shell: pwsh
-        run: |
-          $config = New-PesterConfiguration
-          $config.Run.Path         = 'Tests/Integration.DockerTarget'
-          $config.Output.Verbosity = 'Detailed'
-          $config.Run.PassThru     = $true
-          $result = Invoke-Pester -Configuration $config
-          if ($result.FailedCount -gt 0) { exit 1 }
+      - if: ${{ steps.scan.outputs.has-tests == 'true' }}
+        uses: ./.github/actions/build-ssh-test-image
+
+      - if: ${{ steps.scan.outputs.has-tests == 'true' }}
+        uses: ./.github/actions/run-ssh-integration-tests
 
   # Runs when a consumer repo calls this workflow via workflow_call. Uses
   # the pinned external action path (requires the action to be on master).
@@ -55,20 +50,15 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
-      - uses: VitaliiAndreev/Infrastructure-Common/.github/actions/build-ssh-test-image@master
 
-      - name: Install Pester
-        shell: pwsh
-        run: |
-          Install-Module Pester -MinimumVersion 5.0 -Scope CurrentUser -Force -SkipPublisherCheck
-          Import-Module Pester -MinimumVersion 5.0 -ErrorAction Stop
+      - name: Scan for integration tests
+        id: scan
+        uses: VitaliiAndreev/Infrastructure-Common/.github/actions/scan-integration-tests@master
+        with:
+          test-dir: Tests/Integration.DockerTarget
 
-      - name: Run SSH integration tests
-        shell: pwsh
-        run: |
-          $config = New-PesterConfiguration
-          $config.Run.Path         = 'Tests/Integration.DockerTarget'
-          $config.Output.Verbosity = 'Detailed'
-          $config.Run.PassThru     = $true
-          $result = Invoke-Pester -Configuration $config
-          if ($result.FailedCount -gt 0) { exit 1 }
+      - if: ${{ steps.scan.outputs.has-tests == 'true' }}
+        uses: VitaliiAndreev/Infrastructure-Common/.github/actions/build-ssh-test-image@master
+
+      - if: ${{ steps.scan.outputs.has-tests == 'true' }}
+        uses: VitaliiAndreev/Infrastructure-Common/.github/actions/run-ssh-integration-tests@master

@@ -35,6 +35,40 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+. ([IO.Path]::Combine($PSScriptRoot, '..', 'Helpers.ps1'))
+
+# ---------------------------------------------------------------------------
+# Pure helper functions.
+# ---------------------------------------------------------------------------
+
+# Returns all *.Tests.ps1 files under TestsDir, excluding the
+# Integration.DockerHost and Integration.DockerTarget subdirectories
+# (those require Docker and are run by separate workflows).
+function Get-UnitTestFiles {
+    param([string] $TestsDir)
+
+    $excludedPrefixes = @('Integration.DockerHost', 'Integration.DockerTarget') |
+        ForEach-Object {
+            $dir = [IO.Path]::Combine($TestsDir, $_)
+            if (Test-Path $dir) {
+                (Get-Item $dir).FullName.TrimEnd('\') + '\'
+            }
+        } |
+        Where-Object { $_ }
+
+    Get-ChildItem -Path $TestsDir -Filter '*.Tests.ps1' -Recurse -ErrorAction SilentlyContinue |
+        Where-Object {
+            $path = $_.FullName
+            -not ($excludedPrefixes | Where-Object { $path.StartsWith($_) })
+        }
+}
+
+# ---------------------------------------------------------------------------
+# Main execution - skipped when dot-sourced for unit testing.
+# ---------------------------------------------------------------------------
+
+if ($MyInvocation.InvocationName -ne '.') {
+
 # ---------------------------------------------------------------------------
 # Ensure Pester 5 is available.
 #   Pester 3 ships with Windows PowerShell 5.1 and is incompatible with our
@@ -61,21 +95,7 @@ Import-Module Pester -MinimumVersion 5.0
 
 $testsDir = [IO.Path]::Combine($TestsRoot, 'Tests')
 
-$excludedPrefixes = @('Integration.DockerHost', 'Integration.DockerTarget') |
-    ForEach-Object {
-        $dir = [IO.Path]::Combine($testsDir, $_)
-        if (Test-Path $dir) {
-            (Get-Item $dir).FullName.TrimEnd('\') + '\'
-        }
-    } |
-    Where-Object { $_ }
-
-$testFiles = Get-ChildItem -Path $testsDir `
-    -Filter '*.Tests.ps1' -Recurse -ErrorAction SilentlyContinue |
-    Where-Object {
-        $path = $_.FullName
-        -not ($excludedPrefixes | Where-Object { $path.StartsWith($_) })
-    }
+$testFiles = Get-UnitTestFiles -TestsDir $testsDir
 
 # ---------------------------------------------------------------------------
 # Inject the shared module registration test.
@@ -85,10 +105,7 @@ $testFiles = Get-ChildItem -Path $testsDir `
 #   so the shared test file can locate the module without knowing the repo name.
 # ---------------------------------------------------------------------------
 
-$moduleDir = Get-ChildItem -Path $TestsRoot -Directory |
-    Where-Object { Test-Path ([IO.Path]::Combine($_.FullName, "$($_.Name).psd1")) } |
-    Select-Object -First 1
-
+$moduleDir        = Find-ModuleDirectory -RootPath $TestsRoot
 $sharedModuleTest = [IO.Path]::Combine($PSScriptRoot, 'Module.Tests.ps1')
 
 if ($moduleDir -and (Test-Path $sharedModuleTest)) {
@@ -121,3 +138,5 @@ if ($result.FailedCount -gt 0) {
     Write-Host "$($result.FailedCount) test(s) failed." -ForegroundColor Red
     exit 1
 }
+
+} # end if ($MyInvocation.InvocationName -ne '.')

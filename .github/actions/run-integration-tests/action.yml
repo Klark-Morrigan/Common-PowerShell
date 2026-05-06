@@ -15,6 +15,21 @@ inputs:
       mcr.microsoft.com/powershell:ubuntu-22.04.
     required: false
     default: 'mcr.microsoft.com/powershell:latest'
+  test-file-paths:
+    description: >
+      Comma-separated absolute paths of pre-discovered *.Tests.ps1 files,
+      produced by the workflow scan step. When provided, Run-IntegrationTests.ps1
+      skips its own filesystem scan. Empty string triggers internal discovery.
+    required: false
+    default: ''
+  module-dir:
+    description: >
+      Name of the pre-discovered module directory (the subdirectory whose name
+      matches its .psd1), produced by the workflow scan step. When provided,
+      Run-IntegrationTests.ps1 skips its own module directory detection.
+      Empty string triggers internal detection.
+    required: false
+    default: ''
 
 runs:
   using: composite
@@ -26,5 +41,7 @@ runs:
       # downloaded. Run-IntegrationTests.ps1 is co-located in that directory.
       run: |
         & "${{ github.action_path }}/Run-IntegrationTests.ps1" `
-          -TestsRoot '${{ github.workspace }}' `
-          -DockerImage '${{ inputs.docker-image }}'
+          -TestsRoot      '${{ github.workspace }}' `
+          -DockerImage    '${{ inputs.docker-image }}' `
+          -TestFilePaths  '${{ inputs.test-file-paths }}' `
+          -ModuleDirName  '${{ inputs.module-dir }}'
