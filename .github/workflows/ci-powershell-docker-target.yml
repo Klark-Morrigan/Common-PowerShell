@@ -18,18 +18,44 @@ on:
   workflow_dispatch:
 
 jobs:
-  integration:
+  # Runs when this workflow is triggered directly on Infrastructure-Common
+  # (pull_request / workflow_dispatch). Uses the local action path so the
+  # action can be resolved even before this branch is merged to master.
+  integration-local:
     name: Integration (PowerShell 7) - Docker host SSH target
     runs-on: ubuntu-latest
+    if: ${{ github.repository == 'VitaliiAndreev/Infrastructure-Common' }}
 
     steps:
       - uses: actions/checkout@v5
+      - uses: ./.github/actions/build-ssh-test-image
 
-      - if: ${{ github.repository == 'VitaliiAndreev/Infrastructure-Common' }}
-        uses: ./.github/actions/build-ssh-test-image
+      - name: Install Pester
+        shell: pwsh
+        run: |
+          Install-Module Pester -MinimumVersion 5.0 -Scope CurrentUser -Force -SkipPublisherCheck
+          Import-Module Pester -MinimumVersion 5.0 -ErrorAction Stop
 
-      - if: ${{ github.repository != 'VitaliiAndreev/Infrastructure-Common' }}
-        uses: VitaliiAndreev/Infrastructure-Common/.github/actions/build-ssh-test-image@master
+      - name: Run SSH integration tests
+        shell: pwsh
+        run: |
+          $config = New-PesterConfiguration
+          $config.Run.Path         = 'Tests/Integration.DockerTarget'
+          $config.Output.Verbosity = 'Detailed'
+          $config.Run.PassThru     = $true
+          $result = Invoke-Pester -Configuration $config
+          if ($result.FailedCount -gt 0) { exit 1 }
+
+  # Runs when a consumer repo calls this workflow via workflow_call. Uses
+  # the pinned external action path (requires the action to be on master).
+  integration-consumer:
+    name: Integration (PowerShell 7) - Docker host SSH target
+    runs-on: ubuntu-latest
+    if: ${{ github.repository != 'VitaliiAndreev/Infrastructure-Common' }}
+
+    steps:
+      - uses: actions/checkout@v5
+      - uses: VitaliiAndreev/Infrastructure-Common/.github/actions/build-ssh-test-image@master
 
       - name: Install Pester
         shell: pwsh
