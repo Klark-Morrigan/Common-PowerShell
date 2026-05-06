@@ -8,8 +8,11 @@
     root-level Run-Tests.ps1 wrapper for local dev.
 
     Installs Pester 5 if not already present, then runs every *.Tests.ps1
-    file found under <TestsRoot>\Tests\, excluding Tests\Integration\ (which
-    requires Docker - see run-integration-tests action).
+    file found under <TestsRoot>\Tests\, excluding:
+    - Tests\Integration.DockerHost\ - tests run inside a Docker container
+      (see run-integration-tests action).
+    - Tests\Integration.DockerTarget\ - tests run on the host and connect
+      via SSH to a Docker container (see build-ssh-test-image action).
 
     Also injects the shared Module.Tests.ps1 from this action directory,
     which verifies that every Public\*.ps1 file is registered in the module
@@ -52,21 +55,26 @@ if (-not $pester) {
 Import-Module Pester -MinimumVersion 5.0
 
 # ---------------------------------------------------------------------------
-# Discover test files - exclude Tests\Integration\ (Docker only).
+# Discover test files - exclude Integration.DockerHost\ and
+# Integration.DockerTarget\ (both require Docker).
 # ---------------------------------------------------------------------------
 
-$integrationDir = [IO.Path]::Combine($TestsRoot, 'Tests', 'Integration')
-$integrationPath = $null
-if (Test-Path $integrationDir) {
-    # Normalise so StartsWith works regardless of trailing separator.
-    $integrationPath = (Get-Item $integrationDir).FullName.TrimEnd('\') + '\'
-}
+$testsDir = [IO.Path]::Combine($TestsRoot, 'Tests')
 
-$testFiles = Get-ChildItem -Path ([IO.Path]::Combine($TestsRoot, 'Tests')) `
+$excludedPrefixes = @('Integration.DockerHost', 'Integration.DockerTarget') |
+    ForEach-Object {
+        $dir = [IO.Path]::Combine($testsDir, $_)
+        if (Test-Path $dir) {
+            (Get-Item $dir).FullName.TrimEnd('\') + '\'
+        }
+    } |
+    Where-Object { $_ }
+
+$testFiles = Get-ChildItem -Path $testsDir `
     -Filter '*.Tests.ps1' -Recurse -ErrorAction SilentlyContinue |
     Where-Object {
-        -not $integrationPath -or
-        -not $_.FullName.StartsWith($integrationPath)
+        $path = $_.FullName
+        -not ($excludedPrefixes | Where-Object { $path.StartsWith($_) })
     }
 
 # ---------------------------------------------------------------------------
@@ -97,7 +105,8 @@ if (-not $testFiles) {
 
 $config = New-PesterConfiguration
 # Pass individual file paths so Pester does not re-discover the Tests\ folder
-# (which would include Integration\ even though it was filtered above).
+# (which would include Integration.DockerHost\ and Integration.DockerTarget\
+# even though they were filtered above).
 $config.Run.Path              = @($testFiles.FullName)
 $config.Output.Verbosity      = 'Detailed'
 $config.TestResult.Enabled    = $true

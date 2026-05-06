@@ -7,10 +7,10 @@
     Called by the run-integration-tests composite action in CI, and by the
     root-level Run-IntegrationTests.ps1 wrapper for local dev.
 
-    Each *.Tests.ps1 file found under <TestsRoot>\Tests\Integration\ is run
-    in its own mcr.microsoft.com/powershell container so integration tests
-    never affect the host environment. Local and CI runs use this same script,
-    so behaviour is identical in both environments.
+    Each *.Tests.ps1 file found under <TestsRoot>\Tests\Integration.DockerHost\
+    is run in its own mcr.microsoft.com/powershell container so integration
+    tests never affect the host environment. Local and CI runs use this same
+    script, so behaviour is identical in both environments.
 
     Also injects the shared Module.Tests.ps1 from this action directory, which
     verifies that every FunctionsToExport entry is callable after Import-Module.
@@ -27,8 +27,8 @@
     Unit tests cover 5.1 compatibility via ci-powershell.yml on windows-latest.
 
 .PARAMETER TestsRoot
-    Root directory of the repo under test. Tests\Integration\ must be a
-    direct descendant.
+    Root directory of the repo under test. Tests\Integration.DockerHost\ must
+    be a direct descendant.
 
 .PARAMETER DockerImage
     Docker image to run tests in. Defaults to mcr.microsoft.com/powershell:latest.
@@ -64,7 +64,7 @@ if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
 # Discover integration test files.
 # ---------------------------------------------------------------------------
 
-$integrationDir = [IO.Path]::Combine($TestsRoot, 'Tests', 'Integration')
+$integrationDir = [IO.Path]::Combine($TestsRoot, 'Tests', 'Integration.DockerHost')
 
 $testFiles = Get-ChildItem -Path $integrationDir `
     -Filter '*.Tests.ps1' -Recurse -ErrorAction SilentlyContinue

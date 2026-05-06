@@ -1,13 +1,13 @@
-name: CI (Docker)
+name: CI (Docker host)
 
 # Reusable workflow that runs integration tests. Delegates to the
 # run-integration-tests composite action in Infrastructure-Common, which
 # contains all the Docker run logic. Consumer repos call this workflow from
-# their own ci-docker.yml and optionally pass docker-image to pin a specific
-# Ubuntu variant (see action inputs for when this is needed).
+# their own ci-docker-host.yml and optionally pass docker-image to pin a
+# specific Ubuntu variant (see action inputs for when this is needed).
 #
-# If Tests/Integration/ does not exist or contains no test files the script
-# exits cleanly with no failure.
+# If Tests/Integration.DockerHost/ does not exist or contains no test files
+# the script exits cleanly with no failure.
 
 on:
   pull_request:
@@ -27,7 +27,7 @@ on:
 
 jobs:
   integration:
-    name: Integration (PowerShell 7)
+    name: Integration (PowerShell 7) - Docker host tests
     runs-on: ubuntu-latest
 
     steps:
