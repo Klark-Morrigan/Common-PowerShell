@@ -16,13 +16,9 @@
         'Add-VmFileServerFile',
         'Assert-RequiredProperties',
         'ConvertTo-Array',
-        'Get-GitHubAppToken',
-        'Get-PendingDeployment',
-        'Invoke-GitHubApi',
         'Invoke-ModuleInstall',
         'Invoke-SshClientCommand',
-        'Invoke-WithVmFileServer',
-        'Set-DeploymentStatus'
+        'Invoke-WithVmFileServer'
     )
     CmdletsToExport   = @()
     AliasesToExport   = @()
