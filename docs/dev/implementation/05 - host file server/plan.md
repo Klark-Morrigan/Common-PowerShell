@@ -4,7 +4,7 @@ See [problem.md](problem.md) for context.
 
 ## Index
 - [Step 1 - `Get-VmSwitchHostIp` in Infrastructure.Common](#step-1---get-vmswitchhostip-in-infrastructurecommon)
-- [Step 2 - `Start-VmFileServer` / `Stop-VmFileServer` in Infrastructure.Common](#step-2---start-vmfileserver--stop-vmfileserver-in-infrastructurecommon)
+- [Step 2 - HTTP file server primitives in Infrastructure.Common](#step-2---http-file-server-primitives-in-infrastructurecommon)
 - [Step 3 - `Add-VmFileServerFile` in Infrastructure.Common](#step-3---add-vmfileserverfile-in-infrastructurecommon)
 - [Step 4 - Host server support in Infrastructure-GitHubRunners](#step-4---host-server-support-in-infrastructure-githubrunners)
 - [Step 5 - Host server support in Infrastructure-E2E](#step-5---host-server-support-in-infrastructure-e2e)
@@ -34,62 +34,88 @@ Get-VmSwitchHostIp -VmIpAddress '10.10.0.50'
 
 ---
 
-## Step 2 - `Start-VmFileServer` / `Stop-VmFileServer` in Infrastructure.Common
+## Step 2 - HTTP file server primitives in Infrastructure.Common
 
 **Reason**: The persistent HTTP server is the core primitive. Everything else builds
-on it. Isolating it in Common makes it independently testable and reusable.
+on it. Isolating it in Common makes it independently testable and reusable across
+repos. Exposing only a lifecycle wrapper (rather than raw start/stop functions)
+makes it structurally impossible for callers to leak the listener or firewall rule.
 
-**What**: Two new public functions.
+**What**: One public function and three private helpers.
 
-`Start-VmFileServer` in `Infrastructure.Common/Public/Start-VmFileServer.ps1`:
+`Invoke-WithVmFileServer` in `Infrastructure.Common/Public/Invoke-WithVmFileServer.ps1`
+- Accepts `-VmIpAddress` or `-HostIp`, and `-Port` (default 8745).
+- Starts the server, passes the handle to `-ScriptBlock`, stops in `finally`.
+- Script block output flows through to the caller.
+
+```powershell
+Invoke-WithVmFileServer -VmIpAddress '10.10.0.50' -ScriptBlock {
+    param($server)
+    $url = Add-VmFileServerFile -Server $server -LocalPath 'E:\cache\tarball.tar.gz'
+    # ... use $url
+}
+```
+
+`Start-VmFileServer` in `Infrastructure.Common/Private/Start-VmFileServer.ps1`:
 - Calls `Get-VmSwitchHostIp` to find the host IP, or accepts an explicit `-HostIp`.
 - Creates a temp staging directory.
-- Starts `System.Net.HttpListener` bound to `http://<hostIp>:<port>/`.
 - Opens a Windows Firewall inbound rule for the port.
+- Starts `System.Net.HttpListener` bound to `http://<hostIp>:<port>/`.
 - Spawns a background runspace with a `GetContext()` loop that serves files from the
-  staging directory. Responds 200 with file bytes, 404 for missing files.
+  staging directory via `CopyTo`. Responds 200 with file bytes, 404 for missing files.
 - Returns a server handle (`[PSCustomObject]`) with: `HostIp`, `Port`, `BaseUrl`,
   `StagingDir`, `Listener`, `Runspace`, `PowerShell`, `FirewallRuleName`.
 
-`Stop-VmFileServer` in `Infrastructure.Common/Public/Stop-VmFileServer.ps1`:
-- Calls `$Server.Listener.Stop()` - this causes `GetContext()` to throw, exiting the
+`Stop-VmFileServer` in `Infrastructure.Common/Private/Stop-VmFileServer.ps1`:
+- Calls `$Server.Listener.Stop()` - causes `GetContext()` to throw, exiting the
   background loop cleanly.
 - Disposes the runspace and PowerShell instance.
 - Removes the firewall rule.
 - Deletes the staging directory.
 
-Both callers must wrap `Start-VmFileServer` / `Stop-VmFileServer` in try/finally so
-the server always stops even if subsequent steps fail.
+`Get-VmSwitchHostIp` in `Infrastructure.Common/Private/Get-VmSwitchHostIp.ps1`:
+- Called internally by `Start-VmFileServer` when `-VmIpAddress` is used.
+- See [Step 1](#step-1---get-vmswitchhostip-in-infrastructurecommon) for details.
 
-**Tests**: `Tests/Start-VmFileServer.Tests.ps1`, `Tests/Stop-VmFileServer.Tests.ps1`
-- Integration: start server, fetch a file placed in staging dir via `Invoke-WebRequest`
-  to `http://127.0.0.1:<port>/file`, verify bytes match.
+**Tests**:
+`Tests/Start-VmFileServer.Tests.ps1`, `Tests/Stop-VmFileServer.Tests.ps1`,
+`Tests/Invoke-WithVmFileServer.Tests.ps1`
+- Integration: start server via `Invoke-WithVmFileServer -HostIp '127.0.0.1'`, fetch
+  a file placed in staging dir via `Invoke-WebRequest`, verify content matches.
 - Integration: verify 404 response for a missing file.
-- Unit: `Stop-VmFileServer` calls `Listener.Stop()` and removes the firewall rule.
-- `New-NetFirewallRule` / `Remove-NetFirewallRule` are mocked in unit tests.
+- Unit: `Stop-VmFileServer` calls `Listener.Stop()`, disposes runspace and PowerShell,
+  removes the firewall rule, deletes the staging directory.
+- Unit: `Invoke-WithVmFileServer` forwards parameters, passes handle to script block,
+  calls `Stop-VmFileServer` in `finally` even when the script block throws.
+- `New-NetFirewallRule` / `Remove-NetFirewallRule` are mocked in all tests.
 
 ```mermaid
 sequenceDiagram
   participant Caller
-  participant Start-VmFileServer
+  participant IWVFS as Invoke-WithVmFileServer
+  participant SVFS as Start-VmFileServer
   participant HttpListener
   participant Runspace
+  participant StopVFS as Stop-VmFileServer
 
-  Caller->>Start-VmFileServer: -VmIpAddress / -HostIp, -Port
-  Start-VmFileServer->>HttpListener: new + Start()
-  Start-VmFileServer->>Runspace: open + BeginInvoke(serve loop)
-  Start-VmFileServer-->>Caller: server handle
+  Caller->>IWVFS: -VmIpAddress, -Port, -ScriptBlock
+  IWVFS->>SVFS: forwarded params
+  SVFS->>HttpListener: new + Start()
+  SVFS->>Runspace: open + BeginInvoke(serve loop)
+  SVFS-->>IWVFS: server handle
+  IWVFS->>Caller: ScriptBlock(server handle)
 
   loop each HTTP request
     HttpListener-->>Runspace: GetContext()
-    Runspace->>Runspace: read file from StagingDir
+    Runspace->>Runspace: CopyTo from StagingDir
     Runspace->>HttpListener: write response + Close()
   end
 
-  Caller->>Stop-VmFileServer: server handle
-  Stop-VmFileServer->>HttpListener: Stop()
+  Note over IWVFS: finally
+  IWVFS->>StopVFS: server handle
+  StopVFS->>HttpListener: Stop()
   HttpListener-->>Runspace: GetContext() throws - loop exits
-  Stop-VmFileServer->>Runspace: dispose
+  StopVFS->>Runspace: dispose
 ```
 
 ---
@@ -140,13 +166,11 @@ Add optional `[string] $HostBaseUrl = ''` and forward to `Invoke-TarballDownload
 Add optional `[string] $HostBaseUrl = ''` and forward to `Invoke-RunnerInstall`.
 
 ### `register-runners.ps1`
-Before the per-VM SSH loop:
+Wrap the per-VM SSH loop in `Invoke-WithVmFileServer`:
 1. Find host IP from any reachable VM's `ipAddress`.
-2. `$server = Start-VmFileServer -VmIpAddress $hostIp -Port 8745`
-3. `$tarUrl  = Add-VmFileServerFile -Server $server -LocalPath <prefetched tarball>`
-4. Pass `$server.BaseUrl` to `Invoke-VmRunnerGroup`.
-
-Wrap the VM loop and server in try/finally so `Stop-VmFileServer` always runs.
+2. `Invoke-WithVmFileServer -VmIpAddress $hostIp -Port 8745 -ScriptBlock { param($server)`
+3. `  $tarUrl = Add-VmFileServerFile -Server $server -LocalPath <prefetched tarball>`
+4. `  foreach ($vm in $vms) { Invoke-VmRunnerGroup -HostBaseUrl $server.BaseUrl ... } }`
 
 The prefetched tarball path is derived the same way E2E derives it:
 `Invoke-RunnerTarballPrefetch` already exists in E2E; extract its path-construction
@@ -185,35 +209,30 @@ Copy-RunnerTarballToVm -TarUrl <string> -VmDef <PSCustomObject> -RunnerUser <str
 ```
 
 ### `Invoke-RunnerLifecycleTest.ps1`
-Before calling `Copy-RunnerTarballToVm`:
-1. `$server = Start-VmFileServer -VmIpAddress $VmDef.ipAddress -Port 8745`
-2. `$tarUrl  = Add-VmFileServerFile -Server $server -LocalPath <prefetched tarball>`
-3. `Copy-RunnerTarballToVm -TarUrl $tarUrl -VmDef $VmDef -RunnerUser $RunnerUser`
-
-Wrap in try/finally so `Stop-VmFileServer` always runs.
+Wrap the copy in `Invoke-WithVmFileServer`:
+1. `Invoke-WithVmFileServer -VmIpAddress $VmDef.ipAddress -Port 8745 -ScriptBlock { param($server)`
+2. `  $tarUrl = Add-VmFileServerFile -Server $server -LocalPath <prefetched tarball>`
+3. `  Copy-RunnerTarballToVm -TarUrl $tarUrl -VmDef $VmDef -RunnerUser $RunnerUser }`
 
 **Tests**:
 - `Copy-RunnerTarballToVm`: mock `Invoke-SshClientCommand`; verify correct `curl` and
   `mv`/`chown` commands are sent with the provided `$TarUrl`.
-- `Invoke-RunnerLifecycleTest.ps1`: mock `Start-VmFileServer`, `Add-VmFileServerFile`,
-  `Stop-VmFileServer`, `Copy-RunnerTarballToVm`; verify server is started before copy
-  and stopped in finally.
+- `Invoke-RunnerLifecycleTest.ps1`: mock `Invoke-WithVmFileServer`, `Add-VmFileServerFile`,
+  `Copy-RunnerTarballToVm`; verify the script block stages the file and copies to the VM.
 
 ```mermaid
 sequenceDiagram
   participant Test as Invoke-RunnerLifecycleTest
-  participant SVFS as Start-VmFileServer
+  participant IWVFS as Invoke-WithVmFileServer
   participant AVFSF as Add-VmFileServerFile
   participant CRTV as Copy-RunnerTarballToVm
   participant VM
 
-  Test->>SVFS: -VmIpAddress, -Port
-  SVFS-->>Test: server handle
-  Test->>AVFSF: -Server, -LocalPath (prefetched tarball)
-  AVFSF-->>Test: $tarUrl
-  Test->>CRTV: -TarUrl, -VmDef, -RunnerUser
+  Test->>IWVFS: -VmIpAddress, -Port, -ScriptBlock
+  IWVFS->>AVFSF: -Server, -LocalPath (prefetched tarball)
+  AVFSF-->>IWVFS: $tarUrl
+  IWVFS->>CRTV: -TarUrl, -VmDef, -RunnerUser
   CRTV->>VM: SSH: curl $tarUrl > /tmp/tarball
   CRTV->>VM: SSH: sudo mv + chown
-  Note over Test: finally
-  Test->>Stop-VmFileServer: server handle
+  Note over IWVFS: finally - server stopped
 ```
