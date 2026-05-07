@@ -20,6 +20,7 @@
         'Invoke-GitHubApi',
         'Invoke-ModuleInstall',
         'Invoke-SshClientCommand',
+        'Invoke-WithVmFileServer',
         'Set-DeploymentStatus'
     )
     CmdletsToExport   = @()

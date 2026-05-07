@@ -24,14 +24,21 @@
       ExitStatus).
     - Set-DeploymentStatus: posts a status update to an existing GitHub
       deployment (in_progress, success, failure, etc.).
+    - Invoke-WithVmFileServer: runs a script block with a live file server
+      handle, guaranteeing cleanup in a finally block. Start-VmFileServer,
+      Stop-VmFileServer, and Get-VmSwitchHostIp are private helpers called
+      internally by this function.
 
-    Each public function lives in its own file under Public\ and is
+    Each function lives in its own file under Public\ or Private\ and is
     dot-sourced below so diffs stay focused on a single function per commit.
 #>
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+. "$PSScriptRoot\Private\Get-VmSwitchHostIp.ps1"
+. "$PSScriptRoot\Private\Start-VmFileServer.ps1"
+. "$PSScriptRoot\Private\Stop-VmFileServer.ps1"
 . "$PSScriptRoot\Public\Assert-RequiredProperties.ps1"
 . "$PSScriptRoot\Public\ConvertTo-Array.ps1"
 . "$PSScriptRoot\Public\Get-GitHubAppToken.ps1"
@@ -39,6 +46,7 @@ $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot\Public\Invoke-GitHubApi.ps1"
 . "$PSScriptRoot\Public\Invoke-ModuleInstall.ps1"
 . "$PSScriptRoot\Public\Invoke-SshClientCommand.ps1"
+. "$PSScriptRoot\Public\Invoke-WithVmFileServer.ps1"
 . "$PSScriptRoot\Public\Set-DeploymentStatus.ps1"
 
 # Export-ModuleMember controls what is actually callable after Import-Module.
@@ -55,4 +63,5 @@ Export-ModuleMember -Function `
     Invoke-GitHubApi, `
     Invoke-ModuleInstall, `
     Invoke-SshClientCommand, `
+    Invoke-WithVmFileServer, `
     Set-DeploymentStatus
