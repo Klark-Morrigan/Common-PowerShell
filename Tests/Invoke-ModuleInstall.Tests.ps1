@@ -33,6 +33,20 @@ Describe 'Invoke-ModuleInstall' {
                 $Name -eq 'Foo'
             }
         }
+
+        It 'passes AllowClobber to Install-Module' {
+            Invoke-ModuleInstall -ModuleName 'Foo' -MinimumVersion '1.0.0'
+            Should -Invoke Install-Module -Times 1 -Exactly -ParameterFilter {
+                $AllowClobber -eq $true
+            }
+        }
+
+        It 'forwards MinimumVersion to Install-Module' {
+            Invoke-ModuleInstall -ModuleName 'Foo' -MinimumVersion '1.0.0'
+            Should -Invoke Install-Module -Times 1 -Exactly -ParameterFilter {
+                $MinimumVersion -eq [Version]'1.0.0'
+            }
+        }
     }
 
     Context 'module installed below minimum version' {
@@ -98,6 +112,14 @@ Describe 'Invoke-ModuleInstall' {
             Mock Get-Module {}
             Invoke-ModuleInstall -ModuleName 'Foo'
             Should -Invoke Install-Module -Times 1 -Exactly
+        }
+
+        It 'does not pass MinimumVersion to Install-Module when omitted' {
+            Mock Get-Module {}
+            Invoke-ModuleInstall -ModuleName 'Foo'
+            Should -Invoke Install-Module -Times 1 -Exactly -ParameterFilter {
+                $null -eq $MinimumVersion
+            }
         }
 
         It 'does not install when the module is already present' {

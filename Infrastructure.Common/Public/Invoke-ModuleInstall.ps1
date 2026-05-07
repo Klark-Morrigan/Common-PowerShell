@@ -53,7 +53,16 @@ function Invoke-ModuleInstall {
         $versionLabel = if ($MinimumVersion) { " >= $MinimumVersion" } else { '' }
         Write-Host "Installing $ModuleName$versionLabel from PSGallery ..." `
             -ForegroundColor Cyan
-        Install-Module $ModuleName -Scope CurrentUser -Force
+        $installParams = @{
+            Name        = $ModuleName
+            Scope       = 'CurrentUser'
+            Force       = $true
+            # Required when the module exports commands that are already present
+            # from a previously loaded version of the same module.
+            AllowClobber = $true
+        }
+        if ($MinimumVersion) { $installParams.MinimumVersion = $MinimumVersion }
+        Install-Module @installParams
     }
 
     Import-Module $ModuleName -Force -ErrorAction Stop
