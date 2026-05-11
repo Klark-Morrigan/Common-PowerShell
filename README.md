@@ -157,7 +157,7 @@ version, then imports it.
 
 ```powershell
 # Install with a minimum version constraint
-Invoke-ModuleInstall -ModuleName 'Infrastructure.HyperV' -MinimumVersion '0.1.0'
+Invoke-ModuleInstall -ModuleName 'Infrastructure.HyperV' -MinimumVersion '0.2.0'
 
 # Install if absent, accept any version
 Invoke-ModuleInstall -ModuleName 'Posh-SSH'
