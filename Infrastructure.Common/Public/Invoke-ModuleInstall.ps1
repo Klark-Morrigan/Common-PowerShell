@@ -67,8 +67,12 @@ function Invoke-ModuleInstall {
 
     # The version Import-Module would pick (highest on disk). Re-queried
     # after the install block so we see the freshly installed version.
-    $targetVersion = (Get-Module -ListAvailable -Name $ModuleName |
-        Sort-Object Version -Descending | Select-Object -First 1).Version
+    # Property accessed via an intermediate variable so Set-StrictMode
+    # does not blow up when the module is genuinely absent (e.g. in unit
+    # tests where Install-Module is mocked and installs nothing).
+    $highestAvailable = Get-Module -ListAvailable -Name $ModuleName |
+        Sort-Object Version -Descending | Select-Object -First 1
+    $targetVersion = if ($highestAvailable) { $highestAvailable.Version } else { $null }
 
     # Skip the unload+reload cycle when exactly the target version is
     # already the only one loaded. The unload only exists to break the
