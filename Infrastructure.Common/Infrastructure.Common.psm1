@@ -13,10 +13,6 @@
       whether PowerShell unrolled a single-item collection.
     - Invoke-ModuleInstall: installs a PSGallery module if absent or below a
       minimum version, then imports it.
-    - Invoke-WithNetworkRetry: runs a scriptblock and retries on transient
-      network failures (DNS, connection drops, 5xx) with exponential
-      backoff; non-transient errors (4xx, mocks) propagate immediately.
-      Slated for removal once consumers migrate to Invoke-WithRetry.
     - Invoke-WithRetry: generic retry loop that consumes hashtable-shaped
       retry (ShouldRetry) and backoff (GetDelay) strategies. The classifier
       and pacing are caller-supplied; the loop just orchestrates.
@@ -27,10 +23,10 @@
       VMMS handle release after Remove-VM).
     - New-ExponentialBackoffStrategy / New-LinearBackoffStrategy /
       New-ConstantBackoffStrategy / New-CustomBackoffStrategy: build
-      backoff-strategy hashtables (@{ Name; GetDelay }) for the upcoming
-      Invoke-WithRetry primitive. Custom is the escape hatch for cases
-      the three built-ins (exponential / linear / constant) do not cover
-      (HTTP 429 Retry-After, jittered exponential, ...).
+      backoff-strategy hashtables (@{ Name; GetDelay }) consumed by
+      Invoke-WithRetry. Custom is the escape hatch for cases the three
+      built-ins (exponential / linear / constant) do not cover (HTTP 429
+      Retry-After, jittered exponential, ...).
 
     Hyper-V VM helpers (SSH execution, host file server) were moved to the
     Infrastructure.HyperV module to keep this module focused on genuinely
@@ -64,7 +60,6 @@ $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot\Public\Retry\BackoffStrategies\New-CustomBackoffStrategy.ps1"
 . "$PSScriptRoot\Public\Retry\BackoffStrategies\New-ExponentialBackoffStrategy.ps1"
 . "$PSScriptRoot\Public\Retry\BackoffStrategies\New-LinearBackoffStrategy.ps1"
-. "$PSScriptRoot\Public\Retry\Invoke-WithNetworkRetry.ps1"
 . "$PSScriptRoot\Public\Retry\Invoke-WithRetry.ps1"
 
 # Export-ModuleMember controls what is actually callable after Import-Module.
@@ -78,7 +73,6 @@ Export-ModuleMember -Function `
     ConvertTo-Array, `
     Invoke-ModuleInstall, `
     `
-    Invoke-WithNetworkRetry, `
     Invoke-WithRetry, `
     New-FileLockRetryStrategy, `
     New-TransientNetworkRetryStrategy, `

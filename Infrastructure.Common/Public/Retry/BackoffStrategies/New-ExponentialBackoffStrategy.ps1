@@ -24,8 +24,7 @@ function New-ExponentialBackoffStrategy {
             delay = min(InitialDelaySeconds * 2^(Attempt - 1), MaxIntervalSeconds)
 
         With the defaults (2s initial, 30s cap) the sequence is
-        2, 4, 8, 16, 30, 30, ... matching the policy that
-        Invoke-WithNetworkRetry hard-codes today.
+        2, 4, 8, 16, 30, 30, ...
 
         .GetNewClosure() captures the parameter values into the script
         block so the strategy can be passed around without

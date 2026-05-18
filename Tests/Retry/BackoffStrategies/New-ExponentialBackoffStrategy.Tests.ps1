@@ -22,8 +22,7 @@ Describe 'New-ExponentialBackoffStrategy GetDelay' {
 
     It 'doubles the delay each attempt up to the cap (defaults: 2s -> 30s)' {
         # Defaults: InitialDelaySeconds=2, MaxIntervalSeconds=30 -> the
-        # canonical 2,4,8,16,30,30 sequence that the legacy
-        # Invoke-WithNetworkRetry hard-codes.
+        # canonical 2,4,8,16,30,30 sequence.
         $getDelay = (New-ExponentialBackoffStrategy).GetDelay
 
         $observed = 1..6 | ForEach-Object { & $getDelay $_ $null }
