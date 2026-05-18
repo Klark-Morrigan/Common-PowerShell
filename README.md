@@ -20,6 +20,7 @@ sibling modules:
     - [Invoke-ModuleInstall](#invoke-moduleinstall)
   - Retry (`Public/Retry/`)
     - Loop
+      - [Invoke-WithRetry](#invoke-withretry)
       - [Invoke-WithNetworkRetry](#invoke-withnetworkretry)
     - Transient-error strategies (`Public/Retry/TransientErrorStrategies/`)
       - [New-TransientNetworkRetryStrategy](#new-transientnetworkretrystrategy)
@@ -60,12 +61,18 @@ are grouped on disk by concern; the retry family lives under
 folder stays small as more factories land:
 
 - *Loop (root of `Public/Retry/`)*
+  - **`Invoke-WithRetry`** - generic retry loop. Consumes hashtable-shaped
+    retry strategies (`ShouldRetry` classifiers) and a backoff strategy
+    (`GetDelay` provider). Multiple retry strategies are OR-composed so a
+    single call can cover several legitimately-transient failure classes
+    (e.g. network + file-lock). Defaults to exponential backoff when none
+    is supplied.
   - **`Invoke-WithNetworkRetry`** - runs a scriptblock and retries on
     transient network failures (DNS hiccups, connection drops, 5xx) with
     exponential backoff; non-transient errors (4xx, validation bugs,
     mock-thrown strings) propagate immediately so failures stay fast.
-    Slated for removal in favour of `Invoke-WithRetry` once that
-    primitive lands.
+    Subsumed by `Invoke-WithRetry` + `New-TransientNetworkRetryStrategy`
+    and slated for removal once consumers migrate.
 - *Transient-error strategies (`Public/Retry/TransientErrorStrategies/`)* - factories that
   return `@{ Name; ShouldRetry }` classifiers for the upcoming generic
   `Invoke-WithRetry` primitive. Compose multiple via `-RetryStrategy`
@@ -234,6 +241,47 @@ Invoke-ModuleInstall -ModuleName 'Posh-SSH'
 ### Retry (`Public/Retry/`)
 
 #### Loop
+
+### `Invoke-WithRetry`
+
+Generic retry loop. The classification of "what counts as retryable" is
+supplied by hashtable-shaped retry strategies (`ShouldRetry`
+predicates); the inter-attempt pacing comes from a backoff strategy
+(`GetDelay` provider). Multiple retry strategies are OR-composed: if
+any predicate returns `$true`, the loop retries; if none match, the
+failure propagates immediately. The matched strategy's `Name` is
+surfaced in the per-retry warning so operators can tell which policy
+fired when several are composed.
+
+`-BackoffStrategy` defaults to `New-ExponentialBackoffStrategy`
+(2s -> 4s -> 8s, capped at 30s) because that policy fits both currently
+known call sites (HTTP + file-lock); callers wanting a different curve
+pass one explicitly.
+
+| Parameter         | Type          | Required | Description                                                                                  |
+|-------------------|---------------|----------|----------------------------------------------------------------------------------------------|
+| `-ScriptBlock`    | scriptblock   | Yes      | The work to attempt. Its return value is the function's return value on success.             |
+| `-RetryStrategy`  | hashtable[]   | Yes      | One or more `@{ Name; ShouldRetry }` strategies. Mandatory so "never retries" cannot happen silently. |
+| `-BackoffStrategy`| hashtable     | No       | A `@{ Name; GetDelay }` strategy. Defaults to `New-ExponentialBackoffStrategy`.              |
+| `-MaxAttempts`    | int           | No       | Total attempts including the first. Defaults to `3`. Pass `1` to disable retry.              |
+| `-OperationName`  | string        | No       | Label surfaced in the per-retry warning. Defaults to `operation`.                            |
+
+```powershell
+# Network call with default exponential backoff.
+$json = Invoke-WithRetry `
+    -OperationName 'Adoptium release lookup' `
+    -RetryStrategy (New-TransientNetworkRetryStrategy) `
+    -ScriptBlock   { Invoke-RestMethod $uri }
+
+# File-lock with a tighter attempt budget.
+Invoke-WithRetry `
+    -OperationName 'delete VHDX' `
+    -RetryStrategy (New-FileLockRetryStrategy) `
+    -MaxAttempts   5 `
+    -ScriptBlock   { Remove-Item $vhdxPath -Force -ErrorAction Stop }
+```
+
+---
 
 ### `Invoke-WithNetworkRetry`
 
@@ -435,11 +483,15 @@ sibling repos call them via `workflow_call` and `uses:` references to
 ```
 Infrastructure-Common/
 |- Infrastructure.Common/
+|  |- Private/                          # Module-internal helpers (not exported); mirrors Public\ layout
+|  |  `- Retry/
+|  |     `- Assert-RetryStrategyShape.ps1
 |  |- Public/
 |  |  |- Assert-RequiredProperties.ps1
 |  |  |- ConvertTo-Array.ps1
 |  |  |- Invoke-ModuleInstall.ps1
 |  |  `- Retry/                         # Retry family (loop + strategies)
+|  |     |- Invoke-WithRetry.ps1             # generic retry loop
 |  |     |- Invoke-WithNetworkRetry.ps1     # loop (legacy, to be removed)
 |  |     |- TransientErrorStrategies/       # ShouldRetry classifiers
 |  |     |  |- New-FileLockRetryStrategy.ps1
@@ -456,6 +508,7 @@ Infrastructure-Common/
 |  |- ConvertTo-Array.Tests.ps1
 |  |- Invoke-ModuleInstall.Tests.ps1
 |  |- Retry/                            # Mirrors Infrastructure.Common\Public\Retry\
+|  |  |- Invoke-WithRetry.Tests.ps1
 |  |  |- Invoke-WithNetworkRetry.Tests.ps1
 |  |  |- TransientErrorStrategies/
 |  |  |  |- New-FileLockRetryStrategy.Tests.ps1
