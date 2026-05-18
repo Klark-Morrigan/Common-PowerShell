@@ -14,10 +14,16 @@ sibling modules:
 - [Installation](#installation)
 - [Publishing](#publishing)
 - [API reference](#api-reference)
-  - [Assert-RequiredProperties](#assert-requiredproperties)
-  - [ConvertTo-Array](#convertto-array)
-  - [Invoke-ModuleInstall](#invoke-moduleinstall)
-  - [Invoke-WithNetworkRetry](#invoke-withnetworkretry)
+  - Top-level utilities
+    - [Assert-RequiredProperties](#assert-requiredproperties)
+    - [ConvertTo-Array](#convertto-array)
+    - [Invoke-ModuleInstall](#invoke-moduleinstall)
+  - Retry (`Public/Retry/`)
+    - Loop
+      - [Invoke-WithNetworkRetry](#invoke-withnetworkretry)
+    - Transient-error strategies (`Public/Retry/TransientErrorStrategies/`)
+      - [New-TransientNetworkRetryStrategy](#new-transientnetworkretrystrategy)
+      - [New-FileLockRetryStrategy](#new-filelockretrystrategy)
 - [Reusable CI](#reusable-ci)
 - [Repo structure](#repo-structure)
 
@@ -32,8 +38,11 @@ PowerShell 7+ (`pwsh`). Windows PowerShell 5.1 is not supported.
 ## Overview
 
 Provides cross-cutting utilities used by all infrastructure repos so the logic
-does not need to be duplicated and tested in each one independently:
+does not need to be duplicated and tested in each one independently. Functions
+are grouped on disk by concern; the retry family lives under
+`Public/Retry/`.
 
+**Top-level utilities**
 - **`Assert-RequiredProperties`** - validates that a PSCustomObject has all
   required properties present and non-empty; collects every violation before
   throwing so the consumer sees the full picture in one run.
@@ -41,10 +50,25 @@ does not need to be duplicated and tested in each one independently:
   whether PowerShell unrolled a single-item collection.
 - **`Invoke-ModuleInstall`** - installs a module from PSGallery if absent or
   below the required minimum version, then imports it.
-- **`Invoke-WithNetworkRetry`** - runs a scriptblock and retries on transient
-  network failures (DNS hiccups, connection drops, 5xx) with exponential
-  backoff; non-transient errors (4xx, validation bugs, mock-thrown strings)
-  propagate immediately so failures stay fast.
+
+**Retry (`Public/Retry/`)** - subdivided by strategy category so each
+folder stays small as more factories land:
+
+- *Loop (root of `Public/Retry/`)*
+  - **`Invoke-WithNetworkRetry`** - runs a scriptblock and retries on
+    transient network failures (DNS hiccups, connection drops, 5xx) with
+    exponential backoff; non-transient errors (4xx, validation bugs,
+    mock-thrown strings) propagate immediately so failures stay fast.
+    Slated for removal in favour of `Invoke-WithRetry` once that
+    primitive lands.
+- *Transient-error strategies (`Public/Retry/TransientErrorStrategies/`)* - factories that
+  return `@{ Name; ShouldRetry }` classifiers for the upcoming generic
+  `Invoke-WithRetry` primitive. Compose multiple via `-RetryStrategy`
+  when a single call legitimately touches several transient-failure
+  classes (e.g. network + file-lock).
+  - **`New-TransientNetworkRetryStrategy`** - matches DNS/socket/5xx.
+  - **`New-FileLockRetryStrategy`** - matches `System.IO.IOException`
+    (Hyper-V VMMS handle-release case).
 
 This repo is also the canonical home of the reusable CI workflows and composite
 actions that every infrastructure module shares - see
@@ -124,6 +148,13 @@ Generate a key at [powershellgallery.com/account/apikeys](https://www.powershell
 
 ## API reference
 
+Functions are grouped on disk by concern. Top-level utilities sit at the
+root of `Public/`; the retry family lives under `Public/Retry/` and is
+further subdivided into `TransientErrorStrategies/` and (in a later
+step) `BackoffStrategies/`.
+
+### Top-level utilities
+
 ### `Assert-RequiredProperties`
 
 Validates that a PSCustomObject has all required properties present and
@@ -181,6 +212,10 @@ Invoke-ModuleInstall -ModuleName 'Posh-SSH'
 
 ---
 
+### Retry (`Public/Retry/`)
+
+#### Loop
+
 ### `Invoke-WithNetworkRetry`
 
 Runs `-ScriptBlock` and retries on transient network failures with
@@ -207,6 +242,62 @@ thrown strings in tests) propagates immediately.
 $json = Invoke-WithNetworkRetry `
     -OperationName 'Adoptium feature_releases lookup' `
     -ScriptBlock   { Invoke-RestMethod -Uri $uri -UseBasicParsing }
+```
+
+---
+
+#### Transient-error strategies (`Public/Retry/TransientErrorStrategies/`)
+
+### `New-TransientNetworkRetryStrategy`
+
+Builds a retry-strategy hashtable matching transient network failures
+(DNS hiccups, connection drops, 5xx responses, HttpClient timeouts) for
+use with the upcoming generic `Invoke-WithRetry` primitive. The
+classification policy is identical to `Invoke-WithNetworkRetry`'s: 4xx
+HttpResponseExceptions and non-network errors are treated as permanent.
+
+Takes no parameters. Returns:
+
+```powershell
+@{
+    Name        = 'TransientNetwork'
+    ShouldRetry = { param($ErrorRecord) <bool> }
+}
+```
+
+```powershell
+# Once Invoke-WithRetry lands, used as:
+Invoke-WithRetry `
+    -ScriptBlock   { Invoke-RestMethod $uri } `
+    -RetryStrategy (New-TransientNetworkRetryStrategy)
+```
+
+---
+
+### `New-FileLockRetryStrategy`
+
+Builds a retry-strategy hashtable matching `System.IO.IOException`
+anywhere in the exception chain - the canonical Hyper-V VMMS
+handle-release case where `Remove-Item` briefly fails after `Remove-VM`.
+`UnauthorizedAccessException` is intentionally **not** matched: ACL
+problems will not resolve on their own, and retrying just stalls the
+caller before the real error surfaces.
+
+Takes no parameters. Returns:
+
+```powershell
+@{
+    Name        = 'FileLock'
+    ShouldRetry = { param($ErrorRecord) <bool> }
+}
+```
+
+```powershell
+# Once Invoke-WithRetry lands, used as:
+Invoke-WithRetry `
+    -ScriptBlock   { Remove-Item -Path $vhdxPath -Force -ErrorAction Stop } `
+    -RetryStrategy (New-FileLockRetryStrategy) `
+    -MaxAttempts   5
 ```
 
 ---
@@ -241,6 +332,11 @@ Infrastructure-Common/
 |  |  |- Invoke-ModuleInstall.ps1
 |  |  `- Retry/                         # Retry family (loop + strategies)
 |  |     |- Invoke-WithNetworkRetry.ps1     # loop (legacy, to be removed)
+|  |     |- TransientErrorStrategies/       # ShouldRetry classifiers
+|  |     |  |- New-FileLockRetryStrategy.ps1
+|  |     |  `- New-TransientNetworkRetryStrategy.ps1
+|  |     `- BackoffStrategies/              # GetDelay providers (added in Step 2)
+|  |- Infrastructure.Common.psm1        # Dot-sources Public\ (recursively); exports Public functions
 |  `- Infrastructure.Common.psd1        # Module manifest (version, GUID, exports)
 |- Tests/
 |  |- Assert-RequiredProperties.Tests.ps1
@@ -248,6 +344,9 @@ Infrastructure-Common/
 |  |- Invoke-ModuleInstall.Tests.ps1
 |  |- Retry/                            # Mirrors Infrastructure.Common\Public\Retry\
 |  |  |- Invoke-WithNetworkRetry.Tests.ps1
+|  |  `- TransientErrorStrategies/
+|  |     |- New-FileLockRetryStrategy.Tests.ps1
+|  |     `- New-TransientNetworkRetryStrategy.Tests.ps1
 |  |- ... (shared CI helper tests)
 |  `- Integration.DockerHost/           # Integration tests - run in Docker only
 |- .github/
