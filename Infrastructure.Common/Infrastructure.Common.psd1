@@ -21,7 +21,12 @@
         'Invoke-WithNetworkRetry',
         # Transient-error strategies (Public/Retry/TransientErrorStrategies/)
         'New-FileLockRetryStrategy',
-        'New-TransientNetworkRetryStrategy'
+        'New-TransientNetworkRetryStrategy',
+        # Backoff strategies (Public/Retry/BackoffStrategies/)
+        'New-ConstantBackoffStrategy',
+        'New-CustomBackoffStrategy',
+        'New-ExponentialBackoffStrategy',
+        'New-LinearBackoffStrategy'
     )
     CmdletsToExport   = @()
     AliasesToExport   = @()

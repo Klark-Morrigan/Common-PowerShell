@@ -22,6 +22,12 @@
     - New-FileLockRetryStrategy: builds a retry-strategy hashtable that
       matches System.IO.IOException (file-lock contention, e.g. Hyper-V
       VMMS handle release after Remove-VM).
+    - New-ExponentialBackoffStrategy / New-LinearBackoffStrategy /
+      New-ConstantBackoffStrategy / New-CustomBackoffStrategy: build
+      backoff-strategy hashtables (@{ Name; GetDelay }) for the upcoming
+      Invoke-WithRetry primitive. Custom is the escape hatch for cases
+      the three built-ins (exponential / linear / constant) do not cover
+      (HTTP 429 Retry-After, jittered exponential, ...).
 
     Hyper-V VM helpers (SSH execution, host file server) were moved to the
     Infrastructure.HyperV module to keep this module focused on genuinely
@@ -40,14 +46,17 @@ $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot\Public\Invoke-ModuleInstall.ps1"
 
 # Retry primitives - grouped because they form a self-contained family
-# (loop + predicate strategies + backoff strategies) and their count will
-# grow as Step 2-3 of the "generalise retry" plan land. Subdivided by
+# (loop + predicate strategies + backoff strategies). Subdivided by
 # strategy category: TransientErrorStrategies\ for ShouldRetry classifiers
-# and BackoffStrategies\ for GetDelay providers (the latter introduced in Step 2). Predicate
-# strategies are dot-sourced before the loop helpers so the loop's
-# relocated classifier helper resolves at module-load time.
+# and BackoffStrategies\ for GetDelay providers. Strategy factories are
+# dot-sourced before the loop helpers so the loop's relocated classifier
+# helper resolves at module-load time.
 . "$PSScriptRoot\Public\Retry\TransientErrorStrategies\New-FileLockRetryStrategy.ps1"
 . "$PSScriptRoot\Public\Retry\TransientErrorStrategies\New-TransientNetworkRetryStrategy.ps1"
+. "$PSScriptRoot\Public\Retry\BackoffStrategies\New-ConstantBackoffStrategy.ps1"
+. "$PSScriptRoot\Public\Retry\BackoffStrategies\New-CustomBackoffStrategy.ps1"
+. "$PSScriptRoot\Public\Retry\BackoffStrategies\New-ExponentialBackoffStrategy.ps1"
+. "$PSScriptRoot\Public\Retry\BackoffStrategies\New-LinearBackoffStrategy.ps1"
 . "$PSScriptRoot\Public\Retry\Invoke-WithNetworkRetry.ps1"
 
 # Export-ModuleMember controls what is actually callable after Import-Module.
@@ -63,4 +72,9 @@ Export-ModuleMember -Function `
     `
     Invoke-WithNetworkRetry, `
     New-FileLockRetryStrategy, `
-    New-TransientNetworkRetryStrategy
+    New-TransientNetworkRetryStrategy, `
+    `
+    New-ConstantBackoffStrategy, `
+    New-CustomBackoffStrategy, `
+    New-ExponentialBackoffStrategy, `
+    New-LinearBackoffStrategy
