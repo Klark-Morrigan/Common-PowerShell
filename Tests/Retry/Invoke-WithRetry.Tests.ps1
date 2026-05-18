@@ -266,6 +266,9 @@ Describe 'Invoke-WithRetry - warning output' {
         # Capture warnings via -WarningVariable rather than redirecting
         # streams: keeps assertions on structured data rather than parsed
         # console text.
+        # Initialise the latch explicitly: strict mode trips on reading an
+        # unset script-scope variable on the first attempt.
+        $script:_succeeded = $false
         Invoke-WithRetry `
             -OperationName   'fetch widget' `
             -RetryStrategy   (New-AlwaysRetryStrategy) `
