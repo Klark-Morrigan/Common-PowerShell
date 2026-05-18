@@ -24,6 +24,11 @@ sibling modules:
     - Transient-error strategies (`Public/Retry/TransientErrorStrategies/`)
       - [New-TransientNetworkRetryStrategy](#new-transientnetworkretrystrategy)
       - [New-FileLockRetryStrategy](#new-filelockretrystrategy)
+    - Backoff strategies (`Public/Retry/BackoffStrategies/`)
+      - [New-ExponentialBackoffStrategy](#new-exponentialbackoffstrategy)
+      - [New-LinearBackoffStrategy](#new-linearbackoffstrategy)
+      - [New-ConstantBackoffStrategy](#new-constantbackoffstrategy)
+      - [New-CustomBackoffStrategy](#new-custombackoffstrategy)
 - [Reusable CI](#reusable-ci)
 - [Repo structure](#repo-structure)
 
@@ -69,6 +74,20 @@ folder stays small as more factories land:
   - **`New-TransientNetworkRetryStrategy`** - matches DNS/socket/5xx.
   - **`New-FileLockRetryStrategy`** - matches `System.IO.IOException`
     (Hyper-V VMMS handle-release case).
+- *Backoff strategies (`Public/Retry/BackoffStrategies/`)* - factories
+  that return `@{ Name; GetDelay }` providers consumed by
+  `Invoke-WithRetry` via `-BackoffStrategy`. Pick the curve that
+  matches the underlying failure; reach for `New-CustomBackoffStrategy`
+  when the built-ins do not (HTTP 429 `Retry-After`, jittered
+  exponential, deadline-aware backoff, ...).
+  - **`New-ExponentialBackoffStrategy`** - doubles each attempt up to a
+    cap. Sensible default for most call sites.
+  - **`New-LinearBackoffStrategy`** - grows linearly per attempt up to
+    a cap. Predictable spacing when exponential ramps up too fast.
+  - **`New-ConstantBackoffStrategy`** - same delay every attempt. Use
+    when the failure has a known fixed recovery window.
+  - **`New-CustomBackoffStrategy`** - wraps a caller-supplied
+    `GetDelay` script block in the standard hashtable shape.
 
 This repo is also the canonical home of the reusable CI workflows and composite
 actions that every infrastructure module shares - see
@@ -302,6 +321,96 @@ Invoke-WithRetry `
 
 ---
 
+#### Backoff strategies (`Public/Retry/BackoffStrategies/`)
+
+All four factories return the same hashtable shape consumed by
+`Invoke-WithRetry` via `-BackoffStrategy`:
+
+```powershell
+@{
+    Name     = '<curve name>'
+    GetDelay = { param($Attempt, $LastError) <seconds> }
+}
+```
+
+`GetDelay` receives the current attempt number (1-based) and the most
+recent `ErrorRecord` so custom providers can adapt the delay to the
+failure (HTTP 429 `Retry-After`, deadline-aware backoff, ...).
+
+### `New-ExponentialBackoffStrategy`
+
+Doubles the delay each attempt, capped at a configurable ceiling.
+Formula: `delay = min(InitialDelaySeconds * 2^(Attempt - 1), MaxIntervalSeconds)`.
+Defaults (2s initial, 30s cap) reproduce `Invoke-WithNetworkRetry`'s
+hard-coded policy.
+
+| Parameter              | Type | Required | Description                                  |
+|------------------------|------|----------|----------------------------------------------|
+| `-InitialDelaySeconds` | int  | No       | Seconds before the first retry. Default `2`. |
+| `-MaxIntervalSeconds`  | int  | No       | Upper bound per attempt. Default `30`.       |
+
+```powershell
+$backoff = New-ExponentialBackoffStrategy -InitialDelaySeconds 1 -MaxIntervalSeconds 10
+```
+
+---
+
+### `New-LinearBackoffStrategy`
+
+Grows the delay linearly per attempt up to a cap.
+Formula: `delay = min(StepSeconds * Attempt, MaxIntervalSeconds)`.
+
+| Parameter             | Type | Required | Description                                  |
+|-----------------------|------|----------|----------------------------------------------|
+| `-StepSeconds`        | int  | No       | Increment per attempt. Default `2`.          |
+| `-MaxIntervalSeconds` | int  | No       | Upper bound per attempt. Default `30`.       |
+
+```powershell
+$backoff = New-LinearBackoffStrategy -StepSeconds 2 -MaxIntervalSeconds 10
+# Delays: 2, 4, 6, 8, 10, 10, ...
+```
+
+---
+
+### `New-ConstantBackoffStrategy`
+
+Returns the same delay on every attempt. Use when the failure has a
+known fixed recovery window (service restart cycle, fixed lease
+renewal, ...) and exponential growth would just oversleep.
+
+| Parameter       | Type | Required | Description                          |
+|-----------------|------|----------|--------------------------------------|
+| `-DelaySeconds` | int  | No       | Delay returned every call. Default `2`. |
+
+```powershell
+$backoff = New-ConstantBackoffStrategy -DelaySeconds 5
+```
+
+---
+
+### `New-CustomBackoffStrategy`
+
+Wraps a caller-supplied `GetDelay` script block in the standard
+backoff-strategy hashtable shape. Escape hatch for cases the built-ins
+do not cover (HTTP 429 `Retry-After`, jittered exponential,
+deadline-aware backoff).
+
+| Parameter        | Type        | Required | Description                                                                |
+|------------------|-------------|----------|----------------------------------------------------------------------------|
+| `-DelayProvider` | scriptblock | Yes      | Called as `& $DelayProvider $Attempt $LastError`; must return seconds.     |
+| `-Name`          | string      | No       | Label surfaced by `Invoke-WithRetry` in the per-retry warning. Default `Custom`. |
+
+```powershell
+$jittered = New-CustomBackoffStrategy -Name 'JitteredExponential' `
+    -DelayProvider {
+        param($Attempt, $LastError)
+        $base = [Math]::Min(2 * [Math]::Pow(2, $Attempt - 1), 30)
+        $base + (Get-Random -Minimum 0 -Maximum 2)
+    }
+```
+
+---
+
 ## Reusable CI
 
 The composite actions under `.github/actions/` and the reusable workflows
@@ -335,7 +444,11 @@ Infrastructure-Common/
 |  |     |- TransientErrorStrategies/       # ShouldRetry classifiers
 |  |     |  |- New-FileLockRetryStrategy.ps1
 |  |     |  `- New-TransientNetworkRetryStrategy.ps1
-|  |     `- BackoffStrategies/              # GetDelay providers (added in Step 2)
+|  |     `- BackoffStrategies/              # GetDelay providers
+|  |        |- New-ConstantBackoffStrategy.ps1
+|  |        |- New-CustomBackoffStrategy.ps1
+|  |        |- New-ExponentialBackoffStrategy.ps1
+|  |        `- New-LinearBackoffStrategy.ps1
 |  |- Infrastructure.Common.psm1        # Dot-sources Public\ (recursively); exports Public functions
 |  `- Infrastructure.Common.psd1        # Module manifest (version, GUID, exports)
 |- Tests/
@@ -344,9 +457,14 @@ Infrastructure-Common/
 |  |- Invoke-ModuleInstall.Tests.ps1
 |  |- Retry/                            # Mirrors Infrastructure.Common\Public\Retry\
 |  |  |- Invoke-WithNetworkRetry.Tests.ps1
-|  |  `- TransientErrorStrategies/
-|  |     |- New-FileLockRetryStrategy.Tests.ps1
-|  |     `- New-TransientNetworkRetryStrategy.Tests.ps1
+|  |  |- TransientErrorStrategies/
+|  |  |  |- New-FileLockRetryStrategy.Tests.ps1
+|  |  |  `- New-TransientNetworkRetryStrategy.Tests.ps1
+|  |  `- BackoffStrategies/
+|  |     |- New-ConstantBackoffStrategy.Tests.ps1
+|  |     |- New-CustomBackoffStrategy.Tests.ps1
+|  |     |- New-ExponentialBackoffStrategy.Tests.ps1
+|  |     `- New-LinearBackoffStrategy.Tests.ps1
 |  |- ... (shared CI helper tests)
 |  `- Integration.DockerHost/           # Integration tests - run in Docker only
 |- .github/
