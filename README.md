@@ -21,7 +21,6 @@ sibling modules:
   - Retry (`Public/Retry/`)
     - Loop
       - [Invoke-WithRetry](#invoke-withretry)
-      - [Invoke-WithNetworkRetry](#invoke-withnetworkretry)
     - Transient-error strategies (`Public/Retry/TransientErrorStrategies/`)
       - [New-TransientNetworkRetryStrategy](#new-transientnetworkretrystrategy)
       - [New-FileLockRetryStrategy](#new-filelockretrystrategy)
@@ -67,15 +66,9 @@ folder stays small as more factories land:
     single call can cover several legitimately-transient failure classes
     (e.g. network + file-lock). Defaults to exponential backoff when none
     is supplied.
-  - **`Invoke-WithNetworkRetry`** - runs a scriptblock and retries on
-    transient network failures (DNS hiccups, connection drops, 5xx) with
-    exponential backoff; non-transient errors (4xx, validation bugs,
-    mock-thrown strings) propagate immediately so failures stay fast.
-    Subsumed by `Invoke-WithRetry` + `New-TransientNetworkRetryStrategy`
-    and slated for removal once consumers migrate.
 - *Transient-error strategies (`Public/Retry/TransientErrorStrategies/`)* - factories that
-  return `@{ Name; ShouldRetry }` classifiers for the upcoming generic
-  `Invoke-WithRetry` primitive. Compose multiple via `-RetryStrategy`
+  return `@{ Name; ShouldRetry }` classifiers consumed by
+  `Invoke-WithRetry`. Compose multiple via `-RetryStrategy`
   when a single call legitimately touches several transient-failure
   classes (e.g. network + file-lock).
   - **`New-TransientNetworkRetryStrategy`** - matches DNS/socket/5xx.
@@ -283,45 +276,14 @@ Invoke-WithRetry `
 
 ---
 
-### `Invoke-WithNetworkRetry`
-
-Runs `-ScriptBlock` and retries on transient network failures with
-exponential backoff. Used to harden any caller that touches the network
-(JDK acquisition, GitHub API, runner registration, ...) against brief
-DNS hiccups or short-lived 5xx responses without making hard failures
-feel sluggish.
-
-Classification is deliberate: failures are retried only when the
-exception chain contains a known-transient type
-(`HttpRequestException`, `SocketException`, `WebException`,
-`TimeoutException`, `TaskCanceledException`) or a 5xx
-`HttpResponseException`. Everything else (4xx, argument bugs, mock-
-thrown strings in tests) propagates immediately.
-
-| Parameter              | Type        | Required | Description                                                                         |
-|------------------------|-------------|----------|-------------------------------------------------------------------------------------|
-| `-ScriptBlock`         | scriptblock | Yes      | The work to attempt. Its return value is the function's return value on success.    |
-| `-OperationName`       | string      | No       | Label surfaced in the per-retry warning. Defaults to `network call`.                |
-| `-MaxAttempts`         | int         | No       | Total attempts including the first. Defaults to `3`. Pass `1` to disable retry.     |
-| `-InitialDelaySeconds` | int         | No       | Seconds before the first retry. Doubles each subsequent attempt. Defaults to `2`.   |
-
-```powershell
-$json = Invoke-WithNetworkRetry `
-    -OperationName 'Adoptium feature_releases lookup' `
-    -ScriptBlock   { Invoke-RestMethod -Uri $uri -UseBasicParsing }
-```
-
----
-
 #### Transient-error strategies (`Public/Retry/TransientErrorStrategies/`)
 
 ### `New-TransientNetworkRetryStrategy`
 
 Builds a retry-strategy hashtable matching transient network failures
 (DNS hiccups, connection drops, 5xx responses, HttpClient timeouts) for
-use with the upcoming generic `Invoke-WithRetry` primitive. The
-classification policy is identical to `Invoke-WithNetworkRetry`'s: 4xx
-HttpResponseExceptions and non-network errors are treated as permanent.
+use with `Invoke-WithRetry`. 4xx HttpResponseExceptions and non-network
+errors are treated as permanent so failures stay fast.
 
 Takes no parameters. Returns:
 
@@ -333,7 +295,6 @@ Takes no parameters. Returns:
 ```
 
 ```powershell
-# Once Invoke-WithRetry lands, used as:
 Invoke-WithRetry `
     -ScriptBlock   { Invoke-RestMethod $uri } `
     -RetryStrategy (New-TransientNetworkRetryStrategy)
@@ -360,7 +321,6 @@ Takes no parameters. Returns:
 ```
 
 ```powershell
-# Once Invoke-WithRetry lands, used as:
 Invoke-WithRetry `
     -ScriptBlock   { Remove-Item -Path $vhdxPath -Force -ErrorAction Stop } `
     -RetryStrategy (New-FileLockRetryStrategy) `
@@ -389,8 +349,8 @@ failure (HTTP 429 `Retry-After`, deadline-aware backoff, ...).
 
 Doubles the delay each attempt, capped at a configurable ceiling.
 Formula: `delay = min(InitialDelaySeconds * 2^(Attempt - 1), MaxIntervalSeconds)`.
-Defaults (2s initial, 30s cap) reproduce `Invoke-WithNetworkRetry`'s
-hard-coded policy.
+Defaults (2s initial, 30s cap) suit the currently known call sites
+(HTTP + file-lock).
 
 | Parameter              | Type | Required | Description                                  |
 |------------------------|------|----------|----------------------------------------------|
@@ -492,7 +452,6 @@ Infrastructure-Common/
 |  |  |- Invoke-ModuleInstall.ps1
 |  |  `- Retry/                         # Retry family (loop + strategies)
 |  |     |- Invoke-WithRetry.ps1             # generic retry loop
-|  |     |- Invoke-WithNetworkRetry.ps1     # loop (legacy, to be removed)
 |  |     |- TransientErrorStrategies/       # ShouldRetry classifiers
 |  |     |  |- New-FileLockRetryStrategy.ps1
 |  |     |  `- New-TransientNetworkRetryStrategy.ps1
@@ -509,7 +468,6 @@ Infrastructure-Common/
 |  |- Invoke-ModuleInstall.Tests.ps1
 |  |- Retry/                            # Mirrors Infrastructure.Common\Public\Retry\
 |  |  |- Invoke-WithRetry.Tests.ps1
-|  |  |- Invoke-WithNetworkRetry.Tests.ps1
 |  |  |- TransientErrorStrategies/
 |  |  |  |- New-FileLockRetryStrategy.Tests.ps1
 |  |  |  `- New-TransientNetworkRetryStrategy.Tests.ps1
