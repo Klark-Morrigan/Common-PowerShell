@@ -1,5 +1,5 @@
 @{
-    ModuleVersion        = '4.0.1'
+    ModuleVersion        = '4.1.0'
     GUID                 = 'b7d3f2a1-4c9e-4f8d-a2b5-3e6d7f8a9b0c'
     Author               = 'Vitaly Andrev'
     Description          = 'Shared PowerShell utilities for infrastructure repos.'
@@ -15,7 +15,8 @@
     FunctionsToExport = @(
         'Assert-RequiredProperties',
         'ConvertTo-Array',
-        'Invoke-ModuleInstall'
+        'Invoke-ModuleInstall',
+        'Invoke-WithNetworkRetry'
     )
     CmdletsToExport   = @()
     AliasesToExport   = @()
