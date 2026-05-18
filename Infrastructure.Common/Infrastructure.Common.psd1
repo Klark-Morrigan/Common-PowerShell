@@ -19,6 +19,9 @@
         'Invoke-ModuleInstall',
         # Retry loop (Public/Retry/)
         'Invoke-WithNetworkRetry',
+        # Transient-error strategies (Public/Retry/TransientErrorStrategies/)
+        'New-FileLockRetryStrategy',
+        'New-TransientNetworkRetryStrategy'
     )
     CmdletsToExport   = @()
     AliasesToExport   = @()

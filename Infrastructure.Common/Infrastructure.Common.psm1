@@ -16,6 +16,12 @@
     - Invoke-WithNetworkRetry: runs a scriptblock and retries on transient
       network failures (DNS, connection drops, 5xx) with exponential
       backoff; non-transient errors (4xx, mocks) propagate immediately.
+    - New-TransientNetworkRetryStrategy: builds a retry-strategy hashtable
+      that matches transient network failures, for use with the upcoming
+      Invoke-WithRetry primitive.
+    - New-FileLockRetryStrategy: builds a retry-strategy hashtable that
+      matches System.IO.IOException (file-lock contention, e.g. Hyper-V
+      VMMS handle release after Remove-VM).
 
     Hyper-V VM helpers (SSH execution, host file server) were moved to the
     Infrastructure.HyperV module to keep this module focused on genuinely
@@ -40,6 +46,8 @@ $ErrorActionPreference = 'Stop'
 # and BackoffStrategies\ for GetDelay providers (the latter introduced in Step 2). Predicate
 # strategies are dot-sourced before the loop helpers so the loop's
 # relocated classifier helper resolves at module-load time.
+. "$PSScriptRoot\Public\Retry\TransientErrorStrategies\New-FileLockRetryStrategy.ps1"
+. "$PSScriptRoot\Public\Retry\TransientErrorStrategies\New-TransientNetworkRetryStrategy.ps1"
 . "$PSScriptRoot\Public\Retry\Invoke-WithNetworkRetry.ps1"
 
 # Export-ModuleMember controls what is actually callable after Import-Module.
@@ -53,4 +61,6 @@ Export-ModuleMember -Function `
     ConvertTo-Array, `
     Invoke-ModuleInstall, `
     `
-    Invoke-WithNetworkRetry
+    Invoke-WithNetworkRetry, `
+    New-FileLockRetryStrategy, `
+    New-TransientNetworkRetryStrategy
