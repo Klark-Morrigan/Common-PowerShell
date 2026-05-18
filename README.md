@@ -239,13 +239,15 @@ Infrastructure-Common/
 |  |  |- Assert-RequiredProperties.ps1
 |  |  |- ConvertTo-Array.ps1
 |  |  |- Invoke-ModuleInstall.ps1
-|  |  `- Invoke-WithNetworkRetry.ps1
-|  |- Infrastructure.Common.psm1        # Dot-sources Public\; exports Public functions
+|  |  `- Retry/                         # Retry family (loop + strategies)
+|  |     |- Invoke-WithNetworkRetry.ps1     # loop (legacy, to be removed)
 |  `- Infrastructure.Common.psd1        # Module manifest (version, GUID, exports)
 |- Tests/
 |  |- Assert-RequiredProperties.Tests.ps1
 |  |- ConvertTo-Array.Tests.ps1
 |  |- Invoke-ModuleInstall.Tests.ps1
+|  |- Retry/                            # Mirrors Infrastructure.Common\Public\Retry\
+|  |  |- Invoke-WithNetworkRetry.Tests.ps1
 |  |- ... (shared CI helper tests)
 |  `- Integration.DockerHost/           # Integration tests - run in Docker only
 |- .github/

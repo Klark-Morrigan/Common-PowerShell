@@ -13,10 +13,12 @@
     # Both lists must stay in sync. The shared Module.Tests.ps1 in the
     # run-unit-tests action enforces this.
     FunctionsToExport = @(
+        # Top-level utilities
         'Assert-RequiredProperties',
         'ConvertTo-Array',
         'Invoke-ModuleInstall',
-        'Invoke-WithNetworkRetry'
+        # Retry loop (Public/Retry/)
+        'Invoke-WithNetworkRetry',
     )
     CmdletsToExport   = @()
     AliasesToExport   = @()
