@@ -60,6 +60,11 @@ function Invoke-ModuleInstall {
             # Required when the module exports commands that are already present
             # from a previously loaded version of the same module.
             AllowClobber = $true
+            # Promote PSGallery resolution failures from non-terminating
+            # warnings to terminating errors so Invoke-WithRetry's try/catch
+            # sees them. Without this, the install silently no-ops and
+            # consumers fall through to whatever stale version is cached.
+            ErrorAction = 'Stop'
         }
         if ($MinimumVersion) { $installParams.MinimumVersion = $MinimumVersion }
         Install-Module @installParams
