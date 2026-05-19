@@ -13,19 +13,29 @@
 #   permanent error (a 4xx client response, an argument bug, the mock
 #   layer in tests throwing a plain string, etc.).
 #
-#   Transient signals:
-#     - System.Net.Http.HttpRequestException   (DNS, connection refused,
-#                                               socket errors, generic
-#                                               HttpClient failures)
-#     - System.Net.WebException                (legacy WebClient stack)
-#     - System.Net.Sockets.SocketException     (raw socket errors -
-#                                               "No such host is known")
-#     - System.TimeoutException
-#     - System.Threading.Tasks.TaskCanceledException (HttpClient timeout)
+#   Two detection paths, tried in order. Type-based is the canonical /
+#   reliable path; message-based is a best-effort fallback for callers
+#   whose layer wraps the underlying exception and loses the type.
 #
-#   HTTP status-code rule:
-#     - 5xx server errors -> transient, retry.
-#     - 4xx client errors -> permanent, fail fast.
+#   1. Type-based (preferred) - walks the InnerException chain:
+#      - System.Net.Http.HttpRequestException   (DNS, connection refused,
+#                                                socket errors, generic
+#                                                HttpClient failures)
+#      - System.Net.WebException                (legacy WebClient stack)
+#      - System.Net.Sockets.SocketException     (raw socket errors -
+#                                                "No such host is known")
+#      - System.TimeoutException
+#      - System.Threading.Tasks.TaskCanceledException (HttpClient timeout)
+#      - HttpResponseException with 5xx status (4xx -> permanent)
+#
+#   2. Message-based fallback - scans Exception.Message and
+#      ErrorDetails.Message for well-known phrases. Used when a caller's
+#      layer (e.g. PowerShellGet, which wraps everything in generic
+#      Exception types) destroys the type info that path 1 relies on.
+#      Pattern matching is brittle to wording shifts so this path is a
+#      fallback, not the primary classifier - the cost of a missed
+#      pattern is a real flake fails fast, which is the safer side to
+#      err on.
 #
 #   Anything else (e.g. ArgumentException, RuntimeException from a
 #   string throw in tests) is treated as permanent so a bug or a test
@@ -44,6 +54,9 @@ function Test-TransientNetworkException {
         [System.Management.Automation.ErrorRecord] $ErrorRecord
     )
 
+    # ------------------------------------------------------------------
+    # Path 1 - type-based (preferred)
+    # ------------------------------------------------------------------
     $transientTypeNames = @(
         'System.Net.Http.HttpRequestException',
         'System.Net.WebException',
@@ -71,6 +84,38 @@ function Test-TransientNetworkException {
         $ex = $ex.InnerException
     }
 
+    # ------------------------------------------------------------------
+    # Path 2 - message-based fallback
+    #   Both Exception.Message and ErrorDetails.Message are checked
+    #   because PowerShellGet sometimes populates only the latter (the
+    #   operator-facing text) while Exception.Message stays generic.
+    # ------------------------------------------------------------------
+    $messages = @()
+    if ($ErrorRecord.Exception)    { $messages += $ErrorRecord.Exception.Message }
+    if ($ErrorRecord.ErrorDetails) { $messages += $ErrorRecord.ErrorDetails.Message }
+    $combined = ($messages -join ' ')
+
+    # Patterns grouped by failure family. Keep the list narrow - the
+    # cost of a missed pattern is a real flake failing fast (safe),
+    # the cost of a wrong match is a non-transient error being retried
+    # for the full attempt budget (annoying).
+    $transientMessagePatterns = @(
+        # Network-level: DNS, dropped connection, timeout
+        'Unable to connect to the remote server',
+        'remote name could not be resolved',
+        'underlying connection was closed',
+        'operation has timed out',
+        # HTTP 5xx
+        'Service Unavailable',
+        'Bad Gateway',
+        'Gateway Time-?out',
+        'Internal Server Error'
+    )
+
+    foreach ($pattern in $transientMessagePatterns) {
+        if ($combined -match $pattern) { return $true }
+    }
+
     return $false
 }
 
@@ -90,11 +135,18 @@ function New-TransientNetworkRetryStrategy {
                 ShouldRetry = { param($err) <bool> }
             }
 
-        The ShouldRetry predicate delegates to the file-private
-        Test-TransientNetworkException helper, which walks the exception
-        chain. 4xx HttpResponseExceptions and non-network errors are
-        classified as permanent so the caller fails fast instead of
-        sleeping through retries that cannot succeed.
+        Classification is two-path:
+          1. Type-based (preferred): walks the InnerException chain for
+             known transient .NET network types and HttpResponseException
+             status codes.
+          2. Message-based fallback: scans Exception.Message and
+             ErrorDetails.Message for well-known transient phrases when
+             type info has been wrapped away by an upstream layer (e.g.
+             PowerShellGet).
+
+        4xx HttpResponseExceptions and non-network errors are classified
+        as permanent so the caller fails fast instead of sleeping through
+        retries that cannot succeed.
 
     .EXAMPLE
         Invoke-WithRetry `

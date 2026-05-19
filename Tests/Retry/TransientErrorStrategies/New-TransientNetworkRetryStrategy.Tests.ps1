@@ -7,11 +7,23 @@ BeforeAll {
 
     # Hand-rolled ErrorRecord factory. Pester's ParameterFilter cannot
     # synthesise ErrorRecords for us, and we need the exception chain to
-    # walk through specific types for Test-TransientNetworkException.
+    # walk through specific types for Test-TransientNetworkException's
+    # type-based path; ErrorDetails carries the operator-facing message
+    # that PowerShellGet sometimes uses for the message-based fallback
+    # path.
     function New-TestErrorRecord {
-        param([Exception] $Exception)
-        return [System.Management.Automation.ErrorRecord]::new(
+        param(
+            [Exception] $Exception,
+            [string]    $ErrorDetailsMessage
+        )
+        $rec = [System.Management.Automation.ErrorRecord]::new(
             $Exception, 'TestError', 'NotSpecified', $null)
+        if ($ErrorDetailsMessage) {
+            $rec.ErrorDetails =
+                [System.Management.Automation.ErrorDetails]::new(
+                    $ErrorDetailsMessage)
+        }
+        return $rec
     }
 
     # Builds a fake HttpResponseException-shaped object. The real type lives
@@ -96,6 +108,74 @@ Describe 'New-TransientNetworkRetryStrategy ShouldRetry predicate' {
         # Mocks elsewhere throw plain strings; the retry layer must not
         # incur delays on those.
         $ex  = [System.Management.Automation.RuntimeException]::new('boom')
+        $rec = New-TestErrorRecord -Exception $ex
+
+        & $script:predicate $rec | Should -BeFalse
+    }
+}
+
+Describe 'New-TransientNetworkRetryStrategy message-based fallback' {
+    # Path 2 of the predicate: used when an upstream layer wraps the
+    # typed exception and only the text remains (the PowerShellGet
+    # wrapped-exception problem). The patterns intentionally overlap
+    # with the type-based cases above so the same underlying failure
+    # surfaces transient regardless of which detection path runs.
+
+    BeforeAll {
+        $script:predicate = (New-TransientNetworkRetryStrategy).ShouldRetry
+    }
+
+    It 'returns true for "remote name could not be resolved" in Exception.Message (DNS)' {
+        # The wrapped form of System.Net.Sockets.SocketException - same
+        # underlying failure but the type was lost upstream.
+        $ex  = [Exception]::new(
+            'The remote name could not be resolved: ' +
+            "'www.powershellgallery.com'")
+        $rec = New-TestErrorRecord -Exception $ex
+
+        & $script:predicate $rec | Should -BeTrue
+    }
+
+    It 'returns true when the transient signal lives only in ErrorDetails.Message' {
+        # PowerShellGet sometimes populates ErrorDetails with the
+        # operator-facing text while Exception.Message stays generic.
+        $ex  = [Exception]::new('generic wrapper')
+        $rec = New-TestErrorRecord -Exception $ex `
+                   -ErrorDetailsMessage 'The operation has timed out.'
+
+        & $script:predicate $rec | Should -BeTrue
+    }
+
+    It 'returns true for "Unable to connect to the remote server"' {
+        $ex  = [Exception]::new('Unable to connect to the remote server')
+        $rec = New-TestErrorRecord -Exception $ex
+
+        & $script:predicate $rec | Should -BeTrue
+    }
+
+    It 'returns true for HTTP 503 Service Unavailable in message text' {
+        # Wrapped form of a 5xx HttpResponseException.
+        $ex  = [Exception]::new(
+            'The remote server returned an error: (503) Service Unavailable.')
+        $rec = New-TestErrorRecord -Exception $ex
+
+        & $script:predicate $rec | Should -BeTrue
+    }
+
+    It 'returns true for HTTP 502 Bad Gateway in message text' {
+        $ex  = [Exception]::new(
+            'The remote server returned an error: (502) Bad Gateway.')
+        $rec = New-TestErrorRecord -Exception $ex
+
+        & $script:predicate $rec | Should -BeTrue
+    }
+
+    It 'returns false for a non-network message even when no type matches' {
+        # Path 1 yields false (no transient type in the chain). Path 2
+        # yields false (text does not match any pattern). End result
+        # must be false so a generic error does not soak up retries.
+        $ex  = [Exception]::new(
+            'No match was found for the specified search criteria.')
         $rec = New-TestErrorRecord -Exception $ex
 
         & $script:predicate $rec | Should -BeFalse
