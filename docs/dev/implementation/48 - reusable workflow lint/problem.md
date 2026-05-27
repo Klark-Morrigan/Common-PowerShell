@@ -21,7 +21,7 @@ threshold gate step. Nothing in the org runs it automatically yet.
 
 ## Scope
 - One reusable composite action `lint-workflows` in
-  `Infrastructure-Common/.github/actions/` that runs `actionlint`
+  `PowerShell-Common/.github/actions/` that runs `actionlint`
   against the caller repo's `.github/workflows/`.
 - Action works on three runner classes: `windows-latest`,
   `ubuntu-latest`, and the self-hosted Ubuntu VMs provisioned by
@@ -31,9 +31,9 @@ threshold gate step. Nothing in the org runs it automatically yet.
 - Hosted runners pull the binary per-job from the official GitHub
   releases on cache miss (no third-party install script).
 - Wired as a preflight step into every CI-class reusable workflow:
-  - `Infrastructure-Common/.github/workflows/ci-powershell.yml`
-  - `Infrastructure-Common/.github/workflows/ci-powershell-docker-host.yml`
-  - `Infrastructure-Common/.github/workflows/ci-powershell-docker-target.yml`
+  - `PowerShell-Common/.github/workflows/ci-powershell.yml`
+  - `PowerShell-Common/.github/workflows/ci-powershell-docker-host.yml`
+  - `PowerShell-Common/.github/workflows/ci-powershell-docker-target.yml`
   - `DotNet-Common/.github/workflows/ci-dotnet.yml`
 
 ## Out of scope
@@ -65,9 +65,9 @@ threshold gate step. Nothing in the org runs it automatically yet.
 - **Two consumption shapes already in use:** DotNet-Common workflows
   invoke composite actions via `uses: ./.github/actions/<name>` (with
   a duplicated `uses: <org>/<repo>/.github/actions/<name>@<ref>`
-  fallback for consumer-checkout context). Infrastructure-Common
+  fallback for consumer-checkout context). PowerShell-Common
   workflows instead do an explicit `actions/checkout` of
-  Infrastructure-Common into `.ci-common/` and call scripts by path.
+  PowerShell-Common into `.ci-common/` and call scripts by path.
   This plan keeps each repo's existing shape rather than unifying
   them in the same step.
 - **Cross-platform action body:** PowerShell 7 is on every runner
@@ -78,7 +78,7 @@ threshold gate step. Nothing in the org runs it automatically yet.
   variable is the only knob.
 
 ## Done criteria
-- `lint-workflows` action exists in Infrastructure-Common, with tests
+- `lint-workflows` action exists in PowerShell-Common, with tests
   that validate both the PATH-hit and download paths against a
   fixture workflow directory containing a known-bad workflow.
 - `Install-Actionlint.ps1` exists under
@@ -89,7 +89,7 @@ threshold gate step. Nothing in the org runs it automatically yet.
   on a real run.
 - Each target repo's README documents the new preflight step where
   it documents the workflow itself.
-- One tagged release of Infrastructure-Common carries the new action
+- One tagged release of PowerShell-Common carries the new action
   so consumers can pin by SHA (the DotNet-Common wiring lands
   pinned to that SHA, not `@master`).
 

@@ -15,7 +15,7 @@ BeforeAll {
     $Script:ModuleName  = [IO.Path]::GetFileNameWithoutExtension($psd1Path)
 
     # Install any RequiredModules declared in the manifest so Import-Module
-    # does not fail on a missing dependency (e.g. Infrastructure.Common for
+    # does not fail on a missing dependency (e.g. PowerShell.Common for
     # Infrastructure.Secrets). The guard is necessary because a missing key
     # returns $null, and @($null) would produce a one-element null array.
     if ($Script:Manifest.RequiredModules) {

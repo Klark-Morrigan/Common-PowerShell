@@ -47,7 +47,7 @@ and tears it down afterwards.
 
 Tests run **on the host** and connect via SSH to a container that plays the
 role of the remote machine. The Dockerfile for the SSH target image is kept
-in Infrastructure-Common and shared across all consumer repos.
+in PowerShell-Common and shared across all consumer repos.
 
 - Reusable workflow: `ci-powershell-docker-target.yml`
 - Consumer wrapper: `ci-docker-target.yml`

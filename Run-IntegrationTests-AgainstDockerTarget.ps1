@@ -17,7 +17,7 @@
 
 .PARAMETER TestsRoot
     Root of the repo under test. Tests\Integration\ must be a direct child.
-    Defaults to the Infrastructure-Common root (for testing Common itself).
+    Defaults to the PowerShell-Common root (for testing Common itself).
     Consumer repos pass their own root:
         .ci-common\Run-IntegrationTests-AgainstDockerTarget.ps1 `
             -TestsRoot $PSScriptRoot

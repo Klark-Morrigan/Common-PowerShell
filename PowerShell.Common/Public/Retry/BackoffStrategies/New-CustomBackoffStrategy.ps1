@@ -1,6 +1,6 @@
 <#
 .NOTES
-    Dot-sourced by Infrastructure.Common.psm1. Escape hatch for backoff
+    Dot-sourced by PowerShell.Common.psm1. Escape hatch for backoff
     policies the built-in factories do not cover (HTTP 429 Retry-After,
     jittered exponential, deadline-aware backoff, ...).
 #>

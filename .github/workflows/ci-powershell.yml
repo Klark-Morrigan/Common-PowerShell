@@ -1,7 +1,7 @@
 name: CI
 
 # Reusable unit-test workflow for PowerShell repos. Checks out
-# Infrastructure-Common and calls Run-Tests.ps1 directly, excluding
+# PowerShell-Common and calls Run-Tests.ps1 directly, excluding
 # Tests\Integration\ automatically. Integration tests run separately via
 # ci-powershell-docker-host.yml and ci-powershell-docker-target.yml.
 #
@@ -29,8 +29,8 @@ jobs:
 
       - uses: actions/checkout@v5
         with:
-          repository: VitaliiAndreev/Infrastructure-Common
-          ref: ${{ github.repository == 'VitaliiAndreev/Infrastructure-Common' && github.sha || 'master' }}
+          repository: VitaliiAndreev/PowerShell-Common
+          ref: ${{ github.repository == 'VitaliiAndreev/PowerShell-Common' && github.sha || 'master' }}
           path: .ci-common
 
       # Unit tests run BEFORE the lint pass so the lint helpers'

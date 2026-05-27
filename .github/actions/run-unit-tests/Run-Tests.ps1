@@ -18,7 +18,7 @@
     which verifies that every Public\*.ps1 file is registered in the module
     manifest and psm1. Requires the repo to follow the convention:
     a single subdirectory whose name matches its .psd1 (e.g.
-    Infrastructure.Common\Infrastructure.Common.psd1). If no such directory
+    PowerShell.Common\PowerShell.Common.psd1). If no such directory
     is found the shared test is skipped silently.
 
 .PARAMETER TestsRoot
@@ -101,7 +101,7 @@ $testFiles = Get-UnitTestFiles -TestsDir $testsDir
 # Inject the shared module registration test.
 #   Detects the module directory by convention: a direct subdirectory of
 #   TestsRoot whose name matches a .psd1 inside it (e.g.
-#   Infrastructure.Common\Infrastructure.Common.psd1). Sets MODULE_TESTS_ROOT
+#   PowerShell.Common\PowerShell.Common.psd1). Sets MODULE_TESTS_ROOT
 #   so the shared test file can locate the module without knowing the repo name.
 # ---------------------------------------------------------------------------
 

@@ -5,12 +5,12 @@ BeforeAll {
     # Dot-source all four so the install path runs end-to-end - retry +
     # classification are part of the function's contract now, not a
     # black box.
-    . "$PSScriptRoot\..\Infrastructure.Common\Public\Retry\Invoke-WithRetry.ps1"
-    . "$PSScriptRoot\..\Infrastructure.Common\Private\Retry\Assert-RetryStrategyShape.ps1"
-    . "$PSScriptRoot\..\Infrastructure.Common\Public\Retry\BackoffStrategies\New-ExponentialBackoffStrategy.ps1"
-    . "$PSScriptRoot\..\Infrastructure.Common\Public\Retry\TransientErrorStrategies\New-TransientPowerShellModuleInstallRetryStrategy.ps1"
-    . "$PSScriptRoot\..\Infrastructure.Common\Public\Retry\TransientErrorStrategies\New-TransientNetworkRetryStrategy.ps1"
-    . "$PSScriptRoot\..\Infrastructure.Common\Public\Invoke-ModuleInstall.ps1"
+    . "$PSScriptRoot\..\PowerShell.Common\Public\Retry\Invoke-WithRetry.ps1"
+    . "$PSScriptRoot\..\PowerShell.Common\Private\Retry\Assert-RetryStrategyShape.ps1"
+    . "$PSScriptRoot\..\PowerShell.Common\Public\Retry\BackoffStrategies\New-ExponentialBackoffStrategy.ps1"
+    . "$PSScriptRoot\..\PowerShell.Common\Public\Retry\TransientErrorStrategies\New-TransientPowerShellModuleInstallRetryStrategy.ps1"
+    . "$PSScriptRoot\..\PowerShell.Common\Public\Retry\TransientErrorStrategies\New-TransientNetworkRetryStrategy.ps1"
+    . "$PSScriptRoot\..\PowerShell.Common\Public\Invoke-ModuleInstall.ps1"
 
     # Canonical transient error messages used by retry-behaviour tests.
     # Pulled into constants so each test does not redeclare the string

@@ -10,7 +10,7 @@ function Invoke-ModuleInstall {
         the need for each consumer repo to duplicate it.
 
         Note: this function cannot bootstrap itself. Each consumer script
-        still needs a short inline guard to install Infrastructure.Common
+        still needs a short inline guard to install PowerShell.Common
         before this function is available - but that is a one-time cost
         per script, and all other module installs flow through this function.
         That inline guard is also responsible for ensuring the NuGet package

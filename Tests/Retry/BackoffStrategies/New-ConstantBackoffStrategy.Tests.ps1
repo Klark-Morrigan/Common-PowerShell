@@ -1,5 +1,5 @@
 BeforeAll {
-    . "$PSScriptRoot\..\..\..\Infrastructure.Common\Public\Retry\BackoffStrategies\New-ConstantBackoffStrategy.ps1"
+    . "$PSScriptRoot\..\..\..\PowerShell.Common\Public\Retry\BackoffStrategies\New-ConstantBackoffStrategy.ps1"
 }
 
 Describe 'New-ConstantBackoffStrategy' {

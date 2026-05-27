@@ -1,4 +1,4 @@
-# Infrastructure-Common
+# PowerShell-Common
 
 Shared PowerShell module providing generic utilities for the
 `Infrastructure-*` polyrepo family. Domain-specific helpers live in
@@ -96,28 +96,28 @@ actions that every infrastructure module shares - see
 ### Bootstrap note
 
 `Invoke-ModuleInstall` cannot install itself. Each consumer script that needs
-this module must include a short inline guard to install `Infrastructure.Common`
+this module must include a short inline guard to install `PowerShell.Common`
 first - this is a one-time cost per script, and all other module installs then
 flow through `Invoke-ModuleInstall`.
 
 ```powershell
 # Inline bootstrap - cannot use Invoke-ModuleInstall to install itself.
-$_common = Get-Module -ListAvailable -Name Infrastructure.Common |
+$_common = Get-Module -ListAvailable -Name PowerShell.Common |
     Sort-Object Version -Descending | Select-Object -First 1
 if (-not $_common -or $_common.Version -lt [Version]'4.0.1') {
-    Install-Module Infrastructure.Common -Scope CurrentUser -Force
+    Install-Module PowerShell.Common -Scope CurrentUser -Force
     # Re-query so the comparison below uses the freshly installed version.
-    $_common = Get-Module -ListAvailable -Name Infrastructure.Common |
+    $_common = Get-Module -ListAvailable -Name PowerShell.Common |
         Sort-Object Version -Descending | Select-Object -First 1
 }
 # Reload only when the loaded state differs from the target (multiple
 # versions live, or wrong version live). Mirrors the conditional in
 # Invoke-ModuleInstall - inlined here because the bootstrap installs
 # the very module that defines that function.
-$_loaded = @(Get-Module -Name Infrastructure.Common)
+$_loaded = @(Get-Module -Name PowerShell.Common)
 if ($_loaded.Count -ne 1 -or $_loaded[0].Version -ne $_common.Version) {
     if ($_loaded) { $_loaded | Remove-Module -Force }
-    Import-Module Infrastructure.Common -Force -ErrorAction Stop
+    Import-Module PowerShell.Common -Force -ErrorAction Stop
 }
 ```
 
@@ -131,13 +131,13 @@ above - no manual step needed.
 To install manually:
 
 ```powershell
-Install-Module Infrastructure.Common -Scope CurrentUser
+Install-Module PowerShell.Common -Scope CurrentUser
 ```
 
 To update an existing installation:
 
 ```powershell
-Update-Module Infrastructure.Common
+Update-Module PowerShell.Common
 ```
 
 **For local development of this module:** use `Install.ps1` to install from
@@ -151,7 +151,7 @@ Publishing is fully automated via GitHub Actions.
 
 **To ship a new version:**
 
-1. Bump `ModuleVersion` in [Infrastructure.Common/Infrastructure.Common.psd1](Infrastructure.Common/Infrastructure.Common.psd1)
+1. Bump `ModuleVersion` in [PowerShell.Common/PowerShell.Common.psd1](PowerShell.Common/PowerShell.Common.psd1)
 2. Open a PR, get it reviewed and merged
 
 On merge, [.github/workflows/tag.yml](.github/workflows/tag.yml) runs both
@@ -441,8 +441,8 @@ sibling repos call them via `workflow_call` and `uses:` references to
 ## Repo structure
 
 ```
-Infrastructure-Common/
-|- Infrastructure.Common/
+PowerShell-Common/
+|- PowerShell.Common/
 |  |- Private/                          # Module-internal helpers (not exported); mirrors Public\ layout
 |  |  `- Retry/
 |  |     `- Assert-RetryStrategyShape.ps1
@@ -460,13 +460,13 @@ Infrastructure-Common/
 |  |        |- New-CustomBackoffStrategy.ps1
 |  |        |- New-ExponentialBackoffStrategy.ps1
 |  |        `- New-LinearBackoffStrategy.ps1
-|  |- Infrastructure.Common.psm1        # Dot-sources Public\ (recursively); exports Public functions
-|  `- Infrastructure.Common.psd1        # Module manifest (version, GUID, exports)
+|  |- PowerShell.Common.psm1        # Dot-sources Public\ (recursively); exports Public functions
+|  `- PowerShell.Common.psd1        # Module manifest (version, GUID, exports)
 |- Tests/
 |  |- Assert-RequiredProperties.Tests.ps1
 |  |- ConvertTo-Array.Tests.ps1
 |  |- Invoke-ModuleInstall.Tests.ps1
-|  |- Retry/                            # Mirrors Infrastructure.Common\Public\Retry\
+|  |- Retry/                            # Mirrors PowerShell.Common\Public\Retry\
 |  |  |- Invoke-WithRetry.Tests.ps1
 |  |  |- TransientErrorStrategies/
 |  |  |  |- New-FileLockRetryStrategy.Tests.ps1

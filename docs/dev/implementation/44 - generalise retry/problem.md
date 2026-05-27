@@ -15,7 +15,7 @@ different transient-failure class:
 
 | Repo | Function | Retries on | Backoff |
 |---|---|---|---|
-| Infrastructure-Common | [`Invoke-WithNetworkRetry`](../../../../Infrastructure.Common/Public/Invoke-WithNetworkRetry.ps1) | transient network exceptions (`HttpRequestException`, `SocketException`, 5xx `HttpResponseException`, timeouts) | exponential, unbounded growth |
+| PowerShell-Common | [`Invoke-WithNetworkRetry`](../../../../PowerShell.Common/Public/Invoke-WithNetworkRetry.ps1) | transient network exceptions (`HttpRequestException`, `SocketException`, 5xx `HttpResponseException`, timeouts) | exponential, unbounded growth |
 | Infrastructure-Vm-Provisioner | `Remove-ItemWithRetry` in [`remove-vm.ps1`](../../../../../Infrastructure-Vm-Provisioner/hyper-v/ubuntu/down/vm/remove-vm.ps1) | `System.IO.IOException` (VMMS file-handle release after `Remove-VM`) | exponential, capped at `MaxIntervalSeconds` |
 
 Both loops share the same shape:
@@ -55,12 +55,12 @@ files - but its location prevents any other repo from finding it.
 
 ## What we want instead
 
-A single generic primitive in `Infrastructure.Common`, paired with
+A single generic primitive in `PowerShell.Common`, paired with
 hashtable-based strategy factories that supply the classifier and the
 backoff curve:
 
 ```
-Infrastructure.Common/Public/Retry/
+PowerShell.Common/Public/Retry/
   Invoke-WithRetry.ps1                         (NEW) generic loop
   Invoke-WithNetworkRetry.ps1                  (REMOVED, see Step 4)
   TransientErrorStrategies/
@@ -102,11 +102,11 @@ a file-private helper.
 
 `Remove-ItemWithRetry` in Infrastructure-Vm-Provisioner is replaced by a
 direct call to `Invoke-WithRetry` with `New-FileLockRetryStrategy` (after
-the consumer bumps its `Infrastructure.Common` minimum version).
+the consumer bumps its `PowerShell.Common` minimum version).
 
 ## Scope
 
-**Infrastructure.Common** (this repo):
+**PowerShell.Common** (this repo):
 - New `Invoke-WithRetry` generic primitive consuming hashtable strategies.
 - New retry-strategy factories (`New-TransientNetworkRetryStrategy`,
   `New-FileLockRetryStrategy`).
@@ -124,7 +124,7 @@ the consumer bumps its `Infrastructure.Common` minimum version).
   call site uses `Invoke-WithRetry` with `New-FileLockRetryStrategy`.
 - `Invoke-WithNetworkRetry` call sites in JDK acquisition switch to
   `Invoke-WithRetry` with `New-TransientNetworkRetryStrategy`.
-- Bumps minimum `Infrastructure.Common` version to `5.0.0` in its module
+- Bumps minimum `PowerShell.Common` version to `5.0.0` in its module
   install step.
 
 **Out of scope** (deliberately):

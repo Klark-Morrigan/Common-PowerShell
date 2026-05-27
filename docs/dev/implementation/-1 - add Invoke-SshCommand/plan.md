@@ -1,4 +1,4 @@
-# Plan: Add Invoke-SshClientCommand to Infrastructure.Common
+# Plan: Add Invoke-SshClientCommand to PowerShell.Common
 
 ## Index
 
@@ -20,9 +20,9 @@ is available.
 
 | File | Change |
 |---|---|
-| `Infrastructure.Common\Public\Invoke-SshClientCommand.ps1` | New - function definition |
-| `Infrastructure.Common\Infrastructure.Common.psm1` | Add dot-source and export |
-| `Infrastructure.Common\Infrastructure.Common.psd1` | Bump version 1.1.0 -> 1.2.0, add to FunctionsToExport |
+| `PowerShell.Common\Public\Invoke-SshClientCommand.ps1` | New - function definition |
+| `PowerShell.Common\PowerShell.Common.psm1` | Add dot-source and export |
+| `PowerShell.Common\PowerShell.Common.psd1` | Bump version 1.1.0 -> 1.2.0, add to FunctionsToExport |
 | `Tests\Invoke-SshClientCommand.Tests.ps1` | New - unit tests |
 | `README.md` | Document the new function |
 

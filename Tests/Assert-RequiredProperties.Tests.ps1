@@ -1,5 +1,5 @@
 BeforeAll {
-    . "$PSScriptRoot\..\Infrastructure.Common\Public\Assert-RequiredProperties.ps1"
+    . "$PSScriptRoot\..\PowerShell.Common\Public\Assert-RequiredProperties.ps1"
 
     # Builds a PSCustomObject from a hashtable - mirrors what ConvertFrom-Json
     # produces so tests reflect real consumer usage.

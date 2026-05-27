@@ -1,6 +1,6 @@
 <#
 .NOTES
-    Dot-sourced by Infrastructure.Common.psm1. Returns a backoff-strategy
+    Dot-sourced by PowerShell.Common.psm1. Returns a backoff-strategy
     hashtable consumed by Invoke-WithRetry.
 #>
 

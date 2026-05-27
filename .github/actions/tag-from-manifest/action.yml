@@ -9,7 +9,7 @@ inputs:
   psd1:
     description: >
       Relative path to the .psd1 manifest inside the caller's repository
-      (e.g. 'Infrastructure.Common\Infrastructure.Common.psd1').
+      (e.g. 'PowerShell.Common\PowerShell.Common.psd1').
     required: true
 
 outputs:
@@ -25,7 +25,7 @@ runs:
       shell: pwsh
       # ${{ github.action_path }} is substituted by the runner before PowerShell
       # runs - it becomes the literal path where the runner downloaded this
-      # action's source files (a separate clone of Infrastructure-Common).
+      # action's source files (a separate clone of PowerShell-Common).
       # The caller's working directory is unaffected, so the script does not
       # need to exist in the caller's repository.
       run: |

@@ -8,7 +8,7 @@ name: Tag from manifest version
 # this workflow - see release.yml for the expected call pattern.
 #
 # The tag-from-manifest action is referenced conditionally so that changes
-# on a feature branch in Infrastructure-Common are tested against the local
+# on a feature branch in PowerShell-Common are tested against the local
 # versions rather than the published master.
 
 on:
@@ -17,7 +17,7 @@ on:
       psd1:
         description: >
           Path to the .psd1 manifest relative to the repo root
-          (e.g. Infrastructure.Common\Infrastructure.Common.psd1).
+          (e.g. PowerShell.Common\PowerShell.Common.psd1).
         required: true
         type: string
     outputs:
@@ -36,13 +36,13 @@ jobs:
           fetch-depth: 0
 
       - id: tag-local
-        if: github.repository == 'VitaliiAndreev/Infrastructure-Common'
+        if: github.repository == 'VitaliiAndreev/PowerShell-Common'
         uses: ./.github/actions/tag-from-manifest
         with:
           psd1: ${{ inputs.psd1 }}
 
       - id: tag-external
-        if: github.repository != 'VitaliiAndreev/Infrastructure-Common'
-        uses: VitaliiAndreev/Infrastructure-Common/.github/actions/tag-from-manifest@master
+        if: github.repository != 'VitaliiAndreev/PowerShell-Common'
+        uses: VitaliiAndreev/PowerShell-Common/.github/actions/tag-from-manifest@master
         with:
           psd1: ${{ inputs.psd1 }}
