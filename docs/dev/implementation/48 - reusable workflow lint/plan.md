@@ -12,7 +12,7 @@ user-visible behavior.
 - [Step 2 - `lint-workflows` composite action (PATH-hit path)](#step-2---lint-workflows-composite-action-path-hit-path)
 - [Step 3 - `lint-workflows` download fallback path](#step-3---lint-workflows-download-fallback-path)
 - [Step 4 - Provision actionlint on self-hosted Ubuntu VM image](#step-4---provision-actionlint-on-self-hosted-ubuntu-vm-image)
-- [Step 5 - Tagged release of Infrastructure-Common](#step-5---tagged-release-of-infrastructure-common)
+- [Step 5 - Tagged release of PowerShell-Common](#step-5---tagged-release-of-PowerShell-Common)
 - [Step 6 - Wire preflight into `ci-powershell.yml`](#step-6---wire-preflight-into-ci-powershellyml)
 - [Step 7 - Wire preflight into the docker-host/target workflows](#step-7---wire-preflight-into-the-docker-hosttarget-workflows)
 - [Step 8 - Wire preflight into DotNet-Common `ci-dotnet.yml`](#step-8---wire-preflight-into-dotnet-common-ci-dotnetyml)
@@ -29,12 +29,12 @@ prep commit keeps every later step's diff focused on its own concern.
 
 **Changes:**
 - New file
-  `Infrastructure-Common/.github/actions/lint-workflows/version.txt`
+  `PowerShell-Common/.github/actions/lint-workflows/version.txt`
   containing the pinned actionlint version (e.g. `1.7.12`, the
   version proved out locally). Single source of truth read by both
   the action's download path and `Install-Actionlint.ps1`.
 - New fixture workflows under
-  `Infrastructure-Common/Tests/Unit/lint-workflows/fixtures/`:
+  `PowerShell-Common/Tests/Unit/lint-workflows/fixtures/`:
   - `good/.github/workflows/ok.yml` - a minimal workflow `actionlint`
     accepts cleanly.
   - `bad/.github/workflows/typo.yml` - same workflow with an
@@ -70,14 +70,14 @@ the download logic so each surface fails in its own commit if it
 fails.
 
 **Changes:**
-- `Infrastructure-Common/.github/actions/lint-workflows/action.yml`
+- `PowerShell-Common/.github/actions/lint-workflows/action.yml`
   - Inputs: `workflows-path` (default `.github/workflows`),
     `working-directory` (default `${{ github.workspace }}`),
     `install-if-missing` (default `true`, ignored in this step -
     placeholder for Step 3 to fill in).
   - Single `shell: pwsh` step delegating to
     `Invoke-WorkflowLint.ps1`.
-- `Infrastructure-Common/.github/actions/lint-workflows/Invoke-WorkflowLint.ps1`
+- `PowerShell-Common/.github/actions/lint-workflows/Invoke-WorkflowLint.ps1`
   - Resolves `actionlint` via `Get-Command`; if absent, fails with a
     diagnostic naming `Install-Actionlint.ps1` and pointing at
     `Infrastructure-Vm-Provisioner` (Step 3 swaps the failure for
@@ -86,14 +86,14 @@ fails.
     `<working-directory>/<workflows-path>/*.yml` and propagates the
     exit code.
 - Tests under
-  `Infrastructure-Common/Tests/Unit/lint-workflows/Invoke-WorkflowLint.Tests.ps1`:
+  `PowerShell-Common/Tests/Unit/lint-workflows/Invoke-WorkflowLint.Tests.ps1`:
   - Mock `Get-Command` to simulate present/absent.
   - Mock `actionlint` invocation (function shim) to simulate exit 0
     and exit non-zero.
   - Assert: present + exit 0 -> action exits 0; present + exit 1 ->
     action exits 1 and surfaces the linter's stderr; absent ->
     action exits 1 with the diagnostic message.
-- `Infrastructure-Common/README.md`: document the new action under
+- `PowerShell-Common/README.md`: document the new action under
   the composite-actions list with its inputs and the path-hit
   requirement (download fallback documented in Step 3).
 
@@ -152,7 +152,7 @@ focused and lets the path-hit tests stay simple.
     diagnostic.
   - Assert `-InstallIfMissing:$false` + absent -> the Step 2
     "install guidance" diagnostic, unchanged.
-- `Infrastructure-Common/README.md`: extend the action's
+- `PowerShell-Common/README.md`: extend the action's
   documentation to describe the fallback, the SHA verification, and
   the `install-if-missing` knob.
 
@@ -219,7 +219,7 @@ sequenceDiagram
 
 ---
 
-## Step 5 - Tagged release of Infrastructure-Common
+## Step 5 - Tagged release of PowerShell-Common
 
 **Reason:** DotNet-Common's `ci-dotnet.yml` (Step 8) pins by commit
 SHA per its supply-chain posture. The SHA only exists once the tag
@@ -231,14 +231,14 @@ reference rather than to `@master`.
   `v0.{x+1}.0` because a new public action is additive but
   user-facing).
 - Push tag to remote.
-- `Infrastructure-Common/README.md`: list the new tag in the
+- `PowerShell-Common/README.md`: list the new tag in the
   release notes section and reiterate the SHA-pinning guidance for
   consumers.
 
 **Tests:**
 - `git show <tag>` resolves and contains the action directory.
 - Local dry-run: a scratch workflow that does
-  `uses: VitaliiAndreev/Infrastructure-Common/.github/actions/lint-workflows@<sha>`
+  `uses: VitaliiAndreev/PowerShell-Common/.github/actions/lint-workflows@<sha>`
   resolves successfully when invoked from a throwaway branch in a
   consumer repo.
 
@@ -252,7 +252,7 @@ class) and exercises the download fallback on every run. Until
 hosted runners cache `actionlint` somewhere, this is also the
 canonical measure of per-job download overhead.
 
-**Changes (in `Infrastructure-Common`):**
+**Changes (in `PowerShell-Common`):**
 - Add a new step to `ci-powershell.yml` immediately after the
   existing `.ci-common` checkout (so the action's script is on
   disk) and before the unit-test step:
@@ -260,8 +260,8 @@ canonical measure of per-job download overhead.
   - Calls the local script
     `.ci-common/.github/actions/lint-workflows/Invoke-WorkflowLint.ps1`
     against `${{ github.workspace }}/.github/workflows` (the
-    consumer's workflows, not Infrastructure-Common's).
-- `Infrastructure-Common/README.md`: document the lint preflight in
+    consumer's workflows, not PowerShell-Common's).
+- `PowerShell-Common/README.md`: document the lint preflight in
   the `ci-powershell.yml` section.
 
 **Tests:**
@@ -276,7 +276,7 @@ canonical measure of per-job download overhead.
 
 ```mermaid
 flowchart LR
-  CO[actions/checkout] --> CI[checkout Infrastructure-Common into .ci-common]
+  CO[actions/checkout] --> CI[checkout PowerShell-Common into .ci-common]
   CI --> LINT[Lint workflows]
   LINT --> UNIT[Run unit tests]
   LINT -- red --> JOB[Job fails]
@@ -291,11 +291,11 @@ flowchart LR
 action. Splitting from Step 6 keeps each runner-class proof its own
 commit so a regression on either platform is bisectable.
 
-**Changes (in `Infrastructure-Common`):**
+**Changes (in `PowerShell-Common`):**
 - Add the lint step to `ci-powershell-docker-host.yml` and
   `ci-powershell-docker-target.yml`, in the same position relative
   to the existing `.ci-common` checkout.
-- `Infrastructure-Common/README.md`: extend each workflow's section
+- `PowerShell-Common/README.md`: extend each workflow's section
   with the lint preflight note.
 
 **Tests:**
@@ -322,7 +322,7 @@ becomes a hard dependency on it.
 **Changes (in `DotNet-Common`):**
 - New composite action `.github/actions/lint-workflows-preflight/`
   (single-step wrapper) that does
-  `uses: VitaliiAndreev/Infrastructure-Common/.github/actions/lint-workflows@<sha>`,
+  `uses: VitaliiAndreev/PowerShell-Common/.github/actions/lint-workflows@<sha>`,
   pinned to the SHA from Step 5. Wrapping keeps the SHA reference
   in one place rather than duplicated across the local/consumer
   step pair below.

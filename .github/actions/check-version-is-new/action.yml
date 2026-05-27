@@ -9,7 +9,7 @@ inputs:
   psd1:
     description: >
       Path to the .psd1 manifest relative to the repo root
-      (e.g. Infrastructure.Common\Infrastructure.Common.psd1).
+      (e.g. PowerShell.Common\PowerShell.Common.psd1).
     required: true
 
 outputs:

@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Runs unit tests for the Infrastructure.Common module.
+    Runs unit tests for the PowerShell.Common module.
 
 .EXAMPLE
     .\Run-Tests.ps1

@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Installs Infrastructure.Common locally from source for development use.
+    Installs PowerShell.Common locally from source for development use.
 
 .DESCRIPTION
     For development and testing of the module itself only.
@@ -15,24 +15,24 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$moduleSrc   = Join-Path $PSScriptRoot 'Infrastructure.Common'
+$moduleSrc   = Join-Path $PSScriptRoot 'PowerShell.Common'
 $moduleDst   = Join-Path ([Environment]::GetFolderPath('MyDocuments')) `
-                   'WindowsPowerShell\Modules\Infrastructure.Common'
+                   'WindowsPowerShell\Modules\PowerShell.Common'
 
 $srcVersion  = (Import-PowerShellDataFile `
-                    (Join-Path $moduleSrc 'Infrastructure.Common.psd1')).ModuleVersion
-$dstManifest = Join-Path $moduleDst 'Infrastructure.Common.psd1'
+                    (Join-Path $moduleSrc 'PowerShell.Common.psd1')).ModuleVersion
+$dstManifest = Join-Path $moduleDst 'PowerShell.Common.psd1'
 $dstVersion  = if (Test-Path $dstManifest) {
                    (Import-PowerShellDataFile $dstManifest).ModuleVersion
                } else { $null }
 
 if ($srcVersion -eq $dstVersion) {
-    Write-Host "Infrastructure.Common v$srcVersion already installed - skipping." `
+    Write-Host "PowerShell.Common v$srcVersion already installed - skipping." `
         -ForegroundColor Green
     return
 }
 
-Write-Host "Installing Infrastructure.Common v$srcVersion from source ..."
+Write-Host "Installing PowerShell.Common v$srcVersion from source ..."
 if (Test-Path $moduleDst) { Remove-Item $moduleDst -Recurse -Force }
 Copy-Item -Path $moduleSrc -Destination $moduleDst -Recurse
-Write-Host "Infrastructure.Common v$srcVersion installed." -ForegroundColor Green
+Write-Host "PowerShell.Common v$srcVersion installed." -ForegroundColor Green

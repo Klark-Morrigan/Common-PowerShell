@@ -1,7 +1,7 @@
 name: CI (Docker host)
 
 # Reusable workflow that runs integration tests. Delegates to the
-# run-integration-tests composite action in Infrastructure-Common, which
+# run-integration-tests composite action in PowerShell-Common, which
 # contains all the Docker run logic. Consumer repos call this workflow from
 # their own ci-docker-host.yml and optionally pass docker-image to pin a
 # specific Ubuntu variant (see action inputs for when this is needed).
@@ -46,7 +46,7 @@ jobs:
       # of each pair runs; the || fallbacks below merge the outputs safely.
       - name: Scan for integration tests (local)
         id: scan-local
-        if: ${{ github.repository == 'VitaliiAndreev/Infrastructure-Common' }}
+        if: ${{ github.repository == 'VitaliiAndreev/PowerShell-Common' }}
         uses: ./.github/actions/scan-integration-tests
         with:
           test-dir: Tests/Integration.DockerHost
@@ -54,8 +54,8 @@ jobs:
 
       - name: Scan for integration tests (consumer)
         id: scan-consumer
-        if: ${{ github.repository != 'VitaliiAndreev/Infrastructure-Common' }}
-        uses: VitaliiAndreev/Infrastructure-Common/.github/actions/scan-integration-tests@master
+        if: ${{ github.repository != 'VitaliiAndreev/PowerShell-Common' }}
+        uses: VitaliiAndreev/PowerShell-Common/.github/actions/scan-integration-tests@master
         with:
           test-dir: Tests/Integration.DockerHost
           check-module-dir: 'true'
@@ -70,7 +70,7 @@ jobs:
 
       - name: Run integration tests (consumer)
         if: ${{ steps.scan-consumer.outputs.has-tests == 'true' }}
-        uses: VitaliiAndreev/Infrastructure-Common/.github/actions/run-integration-tests@master
+        uses: VitaliiAndreev/PowerShell-Common/.github/actions/run-integration-tests@master
         with:
           docker-image: ${{ inputs.docker-image || 'mcr.microsoft.com/powershell:latest' }}
           test-file-paths: ${{ steps.scan-consumer.outputs.test-file-paths }}

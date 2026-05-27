@@ -1,4 +1,4 @@
-# Problem: Infrastructure.Common contains GitHub-specific functions
+# Problem: PowerShell.Common contains GitHub-specific functions
 
 ## Index
 - [Context](#context)
@@ -11,7 +11,7 @@
 
 ## Context
 
-`Infrastructure.Common` was created as a home for shared PowerShell utilities.
+`PowerShell.Common` was created as a home for shared PowerShell utilities.
 Over time, GitHub-specific functions have accumulated alongside genuinely
 generic ones:
 
@@ -71,22 +71,22 @@ that owns all GitHub-specific functionality:
 - GitHub deployment lifecycle (`Get-PendingDeployment`, `Set-DeploymentStatus`)
 - GitHub Actions runner binary management (`Invoke-RunnerTarballEnsure`)
 
-`Infrastructure.Common` retains only genuinely generic utilities. Neither
+`PowerShell.Common` retains only genuinely generic utilities. Neither
 module depends on the other - the dependency graph stays flat.
 
 Consumer repos install whichever modules they need:
 
 ```
 PSGallery
-  Infrastructure.Common   (SSH, file server, generic utilities)
+  PowerShell.Common   (SSH, file server, generic utilities)
   Infrastructure.GitHub   (GitHub API, auth, deployments, runner binary)
 
 Infrastructure-E2E
-  Install-Module Infrastructure.Common
+  Install-Module PowerShell.Common
   Install-Module Infrastructure.GitHub
 
 Infrastructure-GitHubRunners
-  Install-Module Infrastructure.Common
+  Install-Module PowerShell.Common
   Install-Module Infrastructure.GitHub
 ```
 
@@ -97,11 +97,11 @@ Infrastructure-GitHubRunners
 - Gets its own CI/CD pipeline, versioning, and test suite.
 - No `RequiredModules` dependency on Common.
 
-**Infrastructure.Common** (this repo):
+**PowerShell.Common** (this repo):
 - Removes the five GitHub-specific functions.
 - Version bumped; consumers that used them update their `Install-Module` calls.
 
 **Consumer repos** (Infrastructure-E2E, Infrastructure-GitHubRunners):
 - Add `Install-Module Infrastructure.GitHub` alongside the existing
-  `Install-Module Infrastructure.Common`.
+  `Install-Module PowerShell.Common`.
 - No functional changes - call sites are identical.

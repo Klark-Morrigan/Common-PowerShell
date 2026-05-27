@@ -1,6 +1,6 @@
 <#
 .NOTES
-    Dot-sourced by Infrastructure.Common.psm1. Module-internal helper for
+    Dot-sourced by PowerShell.Common.psm1. Module-internal helper for
     Invoke-WithRetry - kept under Private\ (not Public\) so it is
     excluded from the shared Module.Tests.ps1 export checks: the
     retry/backoff hashtable contract should be free to evolve without

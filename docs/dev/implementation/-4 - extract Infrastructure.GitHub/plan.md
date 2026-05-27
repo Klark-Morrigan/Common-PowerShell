@@ -7,7 +7,7 @@ See [problem.md](problem.md) for context.
 - [Step 2 - Populate Infrastructure.GitHub with the five functions](#step-2---populate-infrastructuregithub-with-the-five-functions)
 - [Step 3 - Update Infrastructure-E2E](#step-3---update-infrastructure-e2e)
 - [Step 4 - Update Infrastructure-GitHubRunners](#step-4---update-infrastructure-githubrunners)
-- [Step 5 - Remove GitHub functions from Infrastructure.Common](#step-5---remove-github-functions-from-infrastructurecommon)
+- [Step 5 - Remove GitHub functions from PowerShell.Common](#step-5---remove-github-functions-from-infrastructurecommon)
 
 ---
 
@@ -18,7 +18,7 @@ Establishing the scaffold first means steps 2-5 are purely additive moves with
 no structural unknowns left to resolve mid-migration.
 
 **What**: New GitHub repository `Infrastructure.GitHub` with the same layout
-conventions as `Infrastructure.Common`. CI workflows delegate to Common's
+conventions as `PowerShell.Common`. CI workflows delegate to Common's
 reusable workflows; manual test runners delegate to Common scripts via a
 `.ci-common` checkout (same pattern used by other consumer repos).
 
@@ -51,17 +51,17 @@ The three CI workflows are thin callers of Common's reusable workflows
 # ci.yml
 jobs:
   ci:
-    uses: VitaliiAndreev/Infrastructure-Common/.github/workflows/ci-powershell.yml@master
+    uses: VitaliiAndreev/PowerShell-Common/.github/workflows/ci-powershell.yml@master
 
 # ci-docker-host.yml
 jobs:
   ci:
-    uses: VitaliiAndreev/Infrastructure-Common/.github/workflows/ci-powershell-docker-host.yml@master
+    uses: VitaliiAndreev/PowerShell-Common/.github/workflows/ci-powershell-docker-host.yml@master
 
 # ci-docker-target.yml
 jobs:
   ci:
-    uses: VitaliiAndreev/Infrastructure-Common/.github/workflows/ci-powershell-docker-target.yml@master
+    uses: VitaliiAndreev/PowerShell-Common/.github/workflows/ci-powershell-docker-target.yml@master
 ```
 
 `release.yml` follows Secrets' `release.yml` pattern exactly, with two
@@ -74,12 +74,12 @@ directly - no local copies:
 
 ```yaml
 tag:
-  uses: VitaliiAndreev/Infrastructure-Common/.github/workflows/tag.yml@master
+  uses: VitaliiAndreev/PowerShell-Common/.github/workflows/tag.yml@master
   with:
     psd1: 'Infrastructure.GitHub\Infrastructure.GitHub.psd1'
 
 publish:
-  uses: VitaliiAndreev/Infrastructure-Common/.github/workflows/publish.yml@master
+  uses: VitaliiAndreev/PowerShell-Common/.github/workflows/publish.yml@master
   with:
     module-path: Infrastructure.GitHub
   secrets:
@@ -120,7 +120,7 @@ local copy needed. With `Public/` empty it trivially passes:
 ```mermaid
 graph LR
   subgraph PSGallery
-    Common[Infrastructure.Common]
+    Common[PowerShell.Common]
   end
   subgraph New repo - not yet published
     GitHub[Infrastructure.GitHub v0.0.0 - empty]
@@ -155,14 +155,14 @@ Infrastructure.GitHub.
 | `Invoke-RunnerTarballEnsure` | `Public/Invoke-RunnerTarballEnsure.ps1` | `Public/Invoke-RunnerTarballEnsure.ps1` |
 
 Tests are copied verbatim - the dot-source path changes from
-`Infrastructure.Common/Public/...` to `Infrastructure.GitHub/Public/...` but
+`PowerShell.Common/Public/...` to `Infrastructure.GitHub/Public/...` but
 the test bodies are identical.
 
 `Infrastructure.GitHub.psd1` and `Infrastructure.GitHub.psm1` are updated to
 declare and dot-source all five functions. Version bumped to `0.1.0` and
 published to PSGallery.
 
-**Infrastructure.Common is not changed in this step.** Both modules export the
+**PowerShell.Common is not changed in this step.** Both modules export the
 same functions temporarily; consumers resolve whichever they have installed.
 
 **Tests** (in Infrastructure.GitHub - identical assertions to Common originals):
@@ -175,7 +175,7 @@ same functions temporarily; consumers resolve whichever they have installed.
 ```mermaid
 graph LR
   subgraph PSGallery
-    Common[Infrastructure.Common - functions still present]
+    Common[PowerShell.Common - functions still present]
     GitHub[Infrastructure.GitHub v0.1.0 - five functions]
   end
   subgraph Consumers
@@ -200,7 +200,7 @@ working at every commit.
 
 ### `Initialize-E2EEnvironment.ps1`
 Add `Invoke-ModuleInstall -ModuleName 'Infrastructure.GitHub' -MinimumVersion '0.1.0'`
-after the existing `Infrastructure.Common` install. No other changes - all
+after the existing `PowerShell.Common` install. No other changes - all
 call sites (`Invoke-GitHubApi`, `Get-GitHubAppToken`, etc.) remain identical.
 
 ### `Invoke-RunnerTarballPrefetch.ps1`
@@ -213,7 +213,7 @@ step is a dependency wiring change, not a logic change.
 ```mermaid
 graph LR
   subgraph PSGallery
-    Common[Infrastructure.Common]
+    Common[PowerShell.Common]
     GitHub[Infrastructure.GitHub v0.1.0]
   end
   subgraph Infrastructure-E2E
@@ -234,10 +234,10 @@ after E2E to reduce risk - E2E failures are non-production.
 
 ### `register-runners.ps1`
 Add `Invoke-ModuleInstall -ModuleName 'Infrastructure.GitHub' -MinimumVersion '0.1.0'`
-after the existing `Infrastructure.Common` install block.
+after the existing `PowerShell.Common` install block.
 
 ### `deregister-runners.ps1`
-Same addition if it installs Infrastructure.Common (check and mirror).
+Same addition if it installs PowerShell.Common (check and mirror).
 
 No call-site changes in any dot-sourced helper - `Invoke-GitHubApi`,
 `Invoke-RunnerTarballEnsure` etc. resolve from Infrastructure.GitHub once
@@ -248,7 +248,7 @@ installed.
 ```mermaid
 graph LR
   subgraph PSGallery
-    Common[Infrastructure.Common]
+    Common[PowerShell.Common]
     GitHub[Infrastructure.GitHub v0.1.0]
   end
   subgraph Infrastructure-GitHubRunners
@@ -263,16 +263,16 @@ graph LR
 
 ---
 
-## Step 5 - Remove GitHub functions from Infrastructure.Common
+## Step 5 - Remove GitHub functions from PowerShell.Common
 
 **Reason**: With both consumers using Infrastructure.GitHub, the functions in
 Common are dead weight. Removing them completes the migration and restores the
 correct cohesion boundary. Done last to guarantee no consumer is broken by the
 removal.
 
-**What**: Changes in `Infrastructure.Common`.
+**What**: Changes in `PowerShell.Common`.
 
-Remove from `Infrastructure.Common/`:
+Remove from `PowerShell.Common/`:
 - `Public/Invoke-GitHubApi.ps1`
 - `Public/Get-GitHubAppToken.ps1`
 - `Public/Get-PendingDeployment.ps1`
@@ -286,11 +286,11 @@ Remove from `Tests/`:
 - `Set-DeploymentStatus.Tests.ps1`
 - `Invoke-RunnerTarballEnsure.Tests.ps1`
 
-Update `Infrastructure.Common.psd1`:
+Update `PowerShell.Common.psd1`:
 - Remove the five names from `FunctionsToExport`.
 - Bump `ModuleVersion` to next minor (e.g. `2.4.0`).
 
-Update `Infrastructure.Common.psm1`:
+Update `PowerShell.Common.psm1`:
 - Remove the five dot-source lines.
 - Remove the five names from `Export-ModuleMember`.
 - Remove the five entries from the description block.
@@ -303,7 +303,7 @@ reduced function list.
 ```mermaid
 graph LR
   subgraph PSGallery
-    Common[Infrastructure.Common v2.4.0 - GitHub functions removed]
+    Common[PowerShell.Common v2.4.0 - GitHub functions removed]
     GitHub[Infrastructure.GitHub v0.1.0]
   end
   subgraph Consumers

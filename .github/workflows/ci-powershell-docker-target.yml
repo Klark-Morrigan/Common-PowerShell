@@ -9,7 +9,7 @@ name: CI (Docker target)
 #
 #   jobs:
 #     ci-docker-target:
-#       uses: VitaliiAndreev/Infrastructure-Common/.github/workflows/ci-powershell-docker-target.yml@master
+#       uses: VitaliiAndreev/PowerShell-Common/.github/workflows/ci-powershell-docker-target.yml@master
 
 on:
   pull_request:
@@ -36,15 +36,15 @@ jobs:
       # of each pair runs; the || fallback below merges has-tests safely.
       - name: Scan for integration tests (local)
         id: scan-local
-        if: ${{ github.repository == 'VitaliiAndreev/Infrastructure-Common' }}
+        if: ${{ github.repository == 'VitaliiAndreev/PowerShell-Common' }}
         uses: ./.github/actions/scan-integration-tests
         with:
           test-dir: Tests/Integration.DockerTarget
 
       - name: Scan for integration tests (consumer)
         id: scan-consumer
-        if: ${{ github.repository != 'VitaliiAndreev/Infrastructure-Common' }}
-        uses: VitaliiAndreev/Infrastructure-Common/.github/actions/scan-integration-tests@master
+        if: ${{ github.repository != 'VitaliiAndreev/PowerShell-Common' }}
+        uses: VitaliiAndreev/PowerShell-Common/.github/actions/scan-integration-tests@master
         with:
           test-dir: Tests/Integration.DockerTarget
 
@@ -58,8 +58,8 @@ jobs:
 
       - name: Build SSH test image (consumer)
         if: ${{ steps.scan-consumer.outputs.has-tests == 'true' }}
-        uses: VitaliiAndreev/Infrastructure-Common/.github/actions/build-ssh-test-image@master
+        uses: VitaliiAndreev/PowerShell-Common/.github/actions/build-ssh-test-image@master
 
       - name: Run SSH integration tests (consumer)
         if: ${{ steps.scan-consumer.outputs.has-tests == 'true' }}
-        uses: VitaliiAndreev/Infrastructure-Common/.github/actions/run-ssh-integration-tests@master
+        uses: VitaliiAndreev/PowerShell-Common/.github/actions/run-ssh-integration-tests@master

@@ -11,7 +11,7 @@
     the caller sees $null instead of an empty array - the producer-side
     dual of the single-match `.Count` scalar trap. Use `return ,@()` to
     preserve array shape across the function boundary. See
-    Infrastructure-Common's memory entry
+    PowerShell-Common's memory entry
     `feedback_powershell_return_empty_array.md` for the failure that
     motivated this lint (JdkProvider.Get-DesiredVersions silently
     skipping the JDK uninstall path).
@@ -53,7 +53,7 @@ $ErrorActionPreference = 'Stop'
 $script:BareReturnEmptyArrayPattern = '^\s*return\s+@\(\s*\)\s*$'
 
 # Path patterns that must never be linted. .ci-common is the sibling
-# checkout of Infrastructure-Common created by ci-powershell.yml;
+# checkout of PowerShell-Common created by ci-powershell.yml;
 # excluded so the lint applies only to the caller repo's own
 # production code. Tests/ is excluded because fixtures and mock
 # helpers legitimately construct empty arrays in places that look

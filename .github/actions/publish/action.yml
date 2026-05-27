@@ -26,7 +26,7 @@ runs:
         # of process listings. The script reads it as $env:API_KEY.
         API_KEY: ${{ inputs.api-key }}
       # ${{ github.action_path }} resolves to the directory where this action's
-      # files were checked out, which is always Infrastructure-Common regardless
+      # files were checked out, which is always PowerShell-Common regardless
       # of which repo is calling the action.
       run: |
         . "${{ github.action_path }}\Invoke-Publish.ps1"
