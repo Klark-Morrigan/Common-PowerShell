@@ -1,11 +1,6 @@
 # PowerShell-Common
 
-Shared PowerShell module providing generic utilities for the
-`Infrastructure-*` polyrepo family. Domain-specific helpers live in
-sibling modules:
-
-- [`Infrastructure.GitHub`](https://github.com/VitaliiAndreev/Infrastructure-GitHub) - GitHub API, deployments, runner binaries
-- [`Infrastructure.HyperV`](https://github.com/VitaliiAndreev/Infrastructure-HyperV) - VM SSH execution, host file server
+Shared PowerShell functions and reusable PowerShell centric GitHub composite actions and workflows.
 
 ## Index
 
@@ -24,6 +19,7 @@ sibling modules:
     - Transient-error strategies (`Public/Retry/TransientErrorStrategies/`)
       - [New-TransientNetworkRetryStrategy](#new-transientnetworkretrystrategy)
       - [New-FileLockRetryStrategy](#new-filelockretrystrategy)
+      - [New-TransientPowerShellModuleInstallRetryStrategy](#new-transientpowershellmoduleinstallretrystrategy)
     - Backoff strategies (`Public/Retry/BackoffStrategies/`)
       - [New-ExponentialBackoffStrategy](#new-exponentialbackoffstrategy)
       - [New-LinearBackoffStrategy](#new-linearbackoffstrategy)
@@ -36,7 +32,7 @@ sibling modules:
 
 ## Requirements
 
-PowerShell 7+ (`pwsh`). Windows PowerShell 5.1 is not supported.
+PowerShell 7+ (`pwsh`).
 
 ---
 
@@ -74,6 +70,10 @@ folder stays small as more factories land:
   - **`New-TransientNetworkRetryStrategy`** - matches DNS/socket/5xx.
   - **`New-FileLockRetryStrategy`** - matches `System.IO.IOException`
     (Hyper-V VMMS handle-release case).
+  - **`New-TransientPowerShellModuleInstallRetryStrategy`** - matches
+    PSGallery source-resolution flakes from `Install-Module` /
+    `Install-Package`. OR-compose with the network strategy for the
+    full transient surface.
 - *Backoff strategies (`Public/Retry/BackoffStrategies/`)* - factories
   that return `@{ Name; GetDelay }` providers consumed by
   `Invoke-WithRetry` via `-BackoffStrategy`. Pick the curve that
@@ -329,6 +329,38 @@ Invoke-WithRetry `
 
 ---
 
+### `New-TransientPowerShellModuleInstallRetryStrategy`
+
+Builds a retry-strategy hashtable matching transient PSGallery
+source-resolution failures emitted by `Install-Module` /
+`Install-Package` (e.g. `Unable to resolve package source`). Generic
+network failures (DNS, timeout, 5xx) are intentionally out of scope -
+OR-compose with `New-TransientNetworkRetryStrategy` to cover both.
+Permanent errors (typos, signature mismatches, auth) propagate
+immediately so misconfiguration fails fast instead of burning the
+full attempt budget.
+
+Takes no parameters. Returns:
+
+```powershell
+@{
+    Name        = 'TransientPowerShellModuleInstall'
+    ShouldRetry = { param($ErrorRecord) <bool> }
+}
+```
+
+```powershell
+Invoke-WithRetry `
+    -ScriptBlock   { Install-Module Foo -ErrorAction Stop } `
+    -RetryStrategy @(
+        (New-TransientPowerShellModuleInstallRetryStrategy),
+        (New-TransientNetworkRetryStrategy)
+    ) `
+    -MaxAttempts   6
+```
+
+---
+
 #### Backoff strategies (`Public/Retry/BackoffStrategies/`)
 
 All four factories return the same hashtable shape consumed by
@@ -454,7 +486,8 @@ PowerShell-Common/
 |  |     |- Invoke-WithRetry.ps1             # generic retry loop
 |  |     |- TransientErrorStrategies/       # ShouldRetry classifiers
 |  |     |  |- New-FileLockRetryStrategy.ps1
-|  |     |  `- New-TransientNetworkRetryStrategy.ps1
+|  |     |  |- New-TransientNetworkRetryStrategy.ps1
+|  |     |  `- New-TransientPowerShellModuleInstallRetryStrategy.ps1
 |  |     `- BackoffStrategies/              # GetDelay providers
 |  |        |- New-ConstantBackoffStrategy.ps1
 |  |        |- New-CustomBackoffStrategy.ps1
@@ -470,16 +503,23 @@ PowerShell-Common/
 |  |  |- Invoke-WithRetry.Tests.ps1
 |  |  |- TransientErrorStrategies/
 |  |  |  |- New-FileLockRetryStrategy.Tests.ps1
-|  |  |  `- New-TransientNetworkRetryStrategy.Tests.ps1
+|  |  |  |- New-TransientNetworkRetryStrategy.Tests.ps1
+|  |  |  `- New-TransientPowerShellModuleInstallRetryStrategy.Tests.ps1
 |  |  `- BackoffStrategies/
 |  |     |- New-ConstantBackoffStrategy.Tests.ps1
 |  |     |- New-CustomBackoffStrategy.Tests.ps1
 |  |     |- New-ExponentialBackoffStrategy.Tests.ps1
 |  |     `- New-LinearBackoffStrategy.Tests.ps1
-|  |- ... (shared CI helper tests)
+|  |- Find-IntegrationTests.Tests.ps1   # Shared CI helper tests
+|  |- Invoke-Publish.Tests.ps1
+|  |- Invoke-TagFromManifest.Tests.ps1
+|  |- Run-IntegrationTests.Tests.ps1
+|  |- Run-Tests.Tests.ps1
+|  |- Test-NoBareReturnEmptyArray.Tests.ps1
 |  `- Integration.DockerHost/           # Integration tests - run in Docker only
 |- .github/
 |  |- actions/                          # Reusable composite actions (canonical)
+|  |  |- Helpers.ps1                    # Shared PS helpers dot-sourced by action scripts
 |  |  |- check-version-is-new/
 |  |  |- tag-from-manifest/
 |  |  |- run-unit-tests/
@@ -487,6 +527,7 @@ PowerShell-Common/
 |  |  |- run-ssh-integration-tests/
 |  |  |- build-ssh-test-image/
 |  |  |- scan-integration-tests/
+|  |  |- lint-no-bare-return-empty-array/  # Lint script invoked by ci-powershell.yml
 |  |  |- assert-secret/
 |  |  `- publish/
 |  `- workflows/                        # Reusable workflows (canonical)
@@ -496,6 +537,9 @@ PowerShell-Common/
 |     |- tag.yml
 |     |- publish.yml
 |     `- release.yml
+|- docs/
+|  `- dev/
+|     `- implementation/                # Per-feature problem.md + plan.md
 |- Install.ps1               # Installs from source for local development
 |- Publish.ps1               # Publishes to PSGallery (called by publish.yml)
 |- Run-Tests.ps1             # Runs unit tests locally (thin wrapper)
