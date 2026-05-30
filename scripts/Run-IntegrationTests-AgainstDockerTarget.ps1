@@ -4,9 +4,9 @@
 
 .DESCRIPTION
     Builds the SSH test image from the Dockerfile in the GitHub-Common
-    repo at $env:GITHUB_COMMON_PATH/.github/actions/build-ssh-test-image/
-    (skipped when the image already exists locally), then runs every
-    *.Tests.ps1 file found under Tests/Integration/ directly on the host.
+    repo (resolved as a sibling checkout next to this repo, skipped when
+    the image already exists locally), then runs every *.Tests.ps1 file
+    found under Tests/Integration/ directly on the host.
 
     This mirrors what ci-powershell-docker-target.yml does in CI, minus
     the GitHub Actions layer cache. Tests connect to the Docker container
@@ -27,24 +27,26 @@
 
 .EXAMPLE
     .ci-common\Run-IntegrationTests-AgainstDockerTarget.ps1 `
-        -TestsRoot C:\a_Code\Infrastructure-GitHubRunners
+        -TestsRoot <path-to-Infrastructure-GitHubRunners>
 #>
 
 param(
-    [string] $TestsRoot = $PSScriptRoot
+    [string] $TestsRoot = (Split-Path -Parent $PSScriptRoot)
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$Script:ImageName   = 'infra-ssh-test-image'
-if (-not $env:GITHUB_COMMON_PATH) {
-    throw ('GITHUB_COMMON_PATH is not set. ' +
-           'Set it to the root of the GitHub-Common repository, ' +
-           'which hosts the build-ssh-test-image Dockerfile.')
-}
+$Script:ImageName = 'infra-ssh-test-image'
+
+# Repo root is one level up now that this script lives under scripts\;
+# the shared repos root is one more level up from there. GitHub-Common is
+# checked out as a sibling of PowerShell-Common under that shared root.
+$Script:RepoRoot  = Split-Path -Parent $PSScriptRoot
+$Script:ReposRoot = Split-Path -Parent $Script:RepoRoot
 $Script:DockerfileDir = [IO.Path]::Combine(
-    $env:GITHUB_COMMON_PATH, '.github', 'actions', 'build-ssh-test-image')
+    $Script:ReposRoot, 'GitHub-Common',
+    '.github', 'actions', 'build-ssh-test-image')
 
 # ---------------------------------------------------------------------------
 # Verify Docker is available.
@@ -65,6 +67,10 @@ $existingImage = docker images -q $Script:ImageName 2>&1
 if ($existingImage) {
     Write-Host 'SSH test image already present - skipping build.' -ForegroundColor Cyan
 } else {
+    if (-not (Test-Path $Script:DockerfileDir)) {
+        throw ("GitHub-Common Dockerfile not found at $Script:DockerfileDir. " +
+               'Expected GitHub-Common to be checked out as a sibling of this repo.')
+    }
     Write-Host 'Building SSH test image...' -ForegroundColor Cyan
     docker build -t $Script:ImageName $Script:DockerfileDir
     if ($LASTEXITCODE -ne 0) {
