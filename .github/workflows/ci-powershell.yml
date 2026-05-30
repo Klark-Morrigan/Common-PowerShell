@@ -63,3 +63,7 @@ jobs:
         with:
           name: test-results-ps7
           path: TestResults.xml
+          # TestResults.xml is per-attempt; re-runs of the same workflow
+          # otherwise collide with the prior attempt's artifact and fail
+          # with an annotation-only error (no in-step log line).
+          overwrite: true
