@@ -3,10 +3,10 @@
     Runs SSH integration tests against a Docker target container.
 
 .DESCRIPTION
-    Builds the SSH test image from the Dockerfile in
-    .github/actions/build-ssh-test-image/ (skipped when the image already
-    exists locally), then runs every *.Tests.ps1 file found under
-    Tests/Integration/ directly on the host.
+    Builds the SSH test image from the Dockerfile in the GitHub-Common
+    repo at $env:GITHUB_COMMON_PATH/.github/actions/build-ssh-test-image/
+    (skipped when the image already exists locally), then runs every
+    *.Tests.ps1 file found under Tests/Integration/ directly on the host.
 
     This mirrors what ci-powershell-docker-target.yml does in CI, minus
     the GitHub Actions layer cache. Tests connect to the Docker container
@@ -38,7 +38,13 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $Script:ImageName   = 'infra-ssh-test-image'
-$Script:DockerfileDir = [IO.Path]::Combine($PSScriptRoot, '.github', 'actions', 'build-ssh-test-image')
+if (-not $env:GITHUB_COMMON_PATH) {
+    throw ('GITHUB_COMMON_PATH is not set. ' +
+           'Set it to the root of the GitHub-Common repository, ' +
+           'which hosts the build-ssh-test-image Dockerfile.')
+}
+$Script:DockerfileDir = [IO.Path]::Combine(
+    $env:GITHUB_COMMON_PATH, '.github', 'actions', 'build-ssh-test-image')
 
 # ---------------------------------------------------------------------------
 # Verify Docker is available.
