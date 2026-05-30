@@ -525,10 +525,8 @@ PowerShell-Common/
 |  |  |- run-unit-tests/
 |  |  |- run-integration-tests/
 |  |  |- run-ssh-integration-tests/
-|  |  |- build-ssh-test-image/
 |  |  |- scan-integration-tests/
 |  |  |- lint-no-bare-return-empty-array/  # Lint script invoked by ci-powershell.yml
-|  |  |- assert-secret/
 |  |  `- publish/
 |  `- workflows/                        # Reusable workflows (canonical)
 |     |- ci-powershell.yml

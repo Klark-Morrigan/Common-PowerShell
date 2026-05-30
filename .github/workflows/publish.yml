@@ -30,18 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      # When running in PowerShell-Common, use local action references so
-      # that changes on the current branch take effect without needing to merge
-      # to master first. External callers must use the pinned master reference
-      # since their checkout does not contain these actions.
-      - uses: ./.github/actions/assert-secret
-        if: github.repository == 'VitaliiAndreev/PowerShell-Common'
-        with:
-          value: ${{ secrets.PSGALLERY_API_KEY }}
-          name: PSGALLERY_API_KEY
-
-      - uses: VitaliiAndreev/PowerShell-Common/.github/actions/assert-secret@master
-        if: github.repository != 'VitaliiAndreev/PowerShell-Common'
+      - uses: VitaliiAndreev/GitHub-Common/.github/actions/assert-secret@master
         with:
           value: ${{ secrets.PSGALLERY_API_KEY }}
           name: PSGALLERY_API_KEY
