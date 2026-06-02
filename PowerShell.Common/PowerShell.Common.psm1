@@ -12,6 +12,10 @@
     - Assert-Wsl2Ready: verifies wsl.exe is on PATH and at least one
       distro is registered; runs 'wsl --install' and throws a
       Wsl2NotReady error if not ready so the caller can prompt for reboot.
+    - Assert-WslHasBash: probes the targeted distro for bash on PATH;
+      throws a WslMissingBash error when absent (Docker Desktop's
+      'docker-desktop' default has no bash, so callers that rely on
+      `#!/usr/bin/env bash` need this gate after Assert-Wsl2Ready).
     - ConvertTo-Array: ensures a value is always an array regardless of
       whether PowerShell unrolled a single-item collection.
     - Invoke-ModuleInstall: installs a PSGallery module if absent or below a
@@ -49,6 +53,7 @@ $ErrorActionPreference = 'Stop'
 # Top-level utilities (no domain grouping yet).
 . "$PSScriptRoot\Public\Assert-RequiredProperties.ps1"
 . "$PSScriptRoot\Public\Assert-Wsl2Ready.ps1"
+. "$PSScriptRoot\Public\Assert-WslHasBash.ps1"
 . "$PSScriptRoot\Public\ConvertTo-Array.ps1"
 . "$PSScriptRoot\Public\Invoke-ModuleInstall.ps1"
 
@@ -76,6 +81,7 @@ $ErrorActionPreference = 'Stop'
 Export-ModuleMember -Function `
     Assert-RequiredProperties, `
     Assert-Wsl2Ready, `
+    Assert-WslHasBash, `
     ConvertTo-Array, `
     Invoke-ModuleInstall, `
     `

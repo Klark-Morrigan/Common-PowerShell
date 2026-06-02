@@ -7,9 +7,10 @@ name: Tag from manifest version
 # Callers are responsible for the version check and tests before invoking
 # this workflow - see release.yml for the expected call pattern.
 #
-# The tag-from-manifest action is referenced conditionally so that changes
-# on a feature branch in PowerShell-Common are tested against the local
-# versions rather than the published master.
+# Every `uses:` for a PowerShell-Common composite is a local `./` path
+# (see ci-powershell.yml header for the eager-resolution rationale).
+# External consumers get a conditional sparse checkout of
+# PowerShell-Common at master into `.powershell-common/`.
 
 on:
   workflow_call:
@@ -29,20 +30,29 @@ jobs:
   run:
     runs-on: windows-latest
     outputs:
-      tag_created: ${{ steps.tag-local.outputs.tag_created || steps.tag-external.outputs.tag_created }}
+      tag_created: ${{ steps.tag-self.outputs.tag_created || steps.tag-consumer.outputs.tag_created }}
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           fetch-depth: 0
 
-      - id: tag-local
+      - if: github.repository != 'VitaliiAndreev/PowerShell-Common'
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          repository: VitaliiAndreev/PowerShell-Common
+          ref: master
+          path: .powershell-common
+          sparse-checkout: .github/actions
+          sparse-checkout-cone-mode: false
+
+      - id: tag-self
         if: github.repository == 'VitaliiAndreev/PowerShell-Common'
         uses: ./.github/actions/tag-from-manifest
         with:
           psd1: ${{ inputs.psd1 }}
 
-      - id: tag-external
+      - id: tag-consumer
         if: github.repository != 'VitaliiAndreev/PowerShell-Common'
-        uses: VitaliiAndreev/PowerShell-Common/.github/actions/tag-from-manifest@master
+        uses: ./.powershell-common/.github/actions/tag-from-manifest
         with:
           psd1: ${{ inputs.psd1 }}
