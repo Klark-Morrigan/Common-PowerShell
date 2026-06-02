@@ -8,8 +8,13 @@ description: >
 inputs:
   source-root:
     description: >
-      Root directory of the repo under lint. Typically
-      `${{ github.workspace }}` from the calling workflow.
+      Root directory of the repo under lint. Typically the
+      `github.workspace` value from the calling workflow. The
+      substitution-expression syntax is intentionally omitted here -
+      composite-action description strings are evaluated at manifest
+      load time, before the `github` context exists, so a literal
+      expression in the description would fail manifest validation
+      with `Unrecognized named-value: github`.
     required: true
   shell:
     description: >
