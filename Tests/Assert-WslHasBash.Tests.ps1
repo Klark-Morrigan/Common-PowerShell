@@ -28,7 +28,7 @@ Describe 'Assert-WslHasBash' {
                 -ParameterFilter { -not ($args -contains '-d') }
         }
 
-        It 'passes -d <name> through to wsl when DistroName is supplied' {
+        It 'passes -d plus the distro name through to wsl when DistroName is supplied' {
             Mock wsl { $global:LASTEXITCODE = 0; return '/usr/bin/bash' }
 
             Assert-WslHasBash -DistroName 'Ubuntu-24.04'
