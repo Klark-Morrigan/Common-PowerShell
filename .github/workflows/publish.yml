@@ -1,6 +1,11 @@
 name: Publish to PSGallery
 
 # Reusable workflow - called from release.yml after the tag is created.
+#
+# Every `uses:` for an external composite is a local `./` path; the
+# composites are fetched into `.powershell-common/` / `.github-common/` via
+# conditional / unconditional sparse checkouts. See ci-powershell.yml
+# header for the eager-resolution rationale.
 on:
   workflow_call:
     inputs:
@@ -30,19 +35,38 @@ jobs:
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
 
-      - uses: VitaliiAndreev/GitHub-Common/.github/actions/assert-secret@master
+      - if: github.repository != 'VitaliiAndreev/PowerShell-Common'
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          repository: VitaliiAndreev/PowerShell-Common
+          ref: master
+          path: .powershell-common
+          sparse-checkout: .github/actions
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          repository: VitaliiAndreev/GitHub-Common
+          ref: master
+          path: .github-common
+          sparse-checkout: |
+            .github/actions
+            .github/lib
+          sparse-checkout-cone-mode: false
+
+      - uses: ./.github-common/.github/actions/assert-secret
         with:
           value: ${{ secrets.PSGALLERY_API_KEY }}
           name: PSGALLERY_API_KEY
 
-      - uses: ./.github/actions/publish
-        if: github.repository == 'VitaliiAndreev/PowerShell-Common'
+      - if: github.repository == 'VitaliiAndreev/PowerShell-Common'
+        uses: ./.github/actions/publish
         with:
           module-path: ${{ inputs.module-path }}
           api-key: ${{ secrets.PSGALLERY_API_KEY }}
 
-      - uses: VitaliiAndreev/PowerShell-Common/.github/actions/publish@master
-        if: github.repository != 'VitaliiAndreev/PowerShell-Common'
+      - if: github.repository != 'VitaliiAndreev/PowerShell-Common'
+        uses: ./.powershell-common/.github/actions/publish
         with:
           module-path: ${{ inputs.module-path }}
           api-key: ${{ secrets.PSGALLERY_API_KEY }}

@@ -1,12 +1,23 @@
 name: CI
 
-# Reusable unit-test workflow for PowerShell repos. Checks out
-# PowerShell-Common and calls Run-Tests.ps1 directly, excluding
-# Tests\Integration\ automatically. Integration tests run separately via
-# ci-powershell-docker-host.yml and ci-powershell-docker-target.yml.
+# Reusable unit-test workflow for PowerShell repos. Delegates to two
+# composite actions in PowerShell-Common:
+#   - run-unit-tests:                  excludes Tests\Integration\ automatically.
+#   - lint-no-bare-return-empty-array: catches the producer-side empty-array
+#                                      footgun on every consumer PR.
+# Integration tests run separately via ci-powershell-docker-host.yml and
+# ci-powershell-docker-target.yml.
 #
-# Consumer repos call this workflow from their own ci.yml instead of
-# maintaining their own run-tests logic for CI.
+# Every `uses:` for a PowerShell-Common composite is a local `./` path,
+# never a fully-qualified `@master` ref. The reason: GitHub Actions
+# eagerly resolves every registry-form `uses:` at job-prep time before
+# step-level `if:` guards are evaluated, so a PR that introduces a
+# brand new composite would fail prep before any step could run. Local
+# refs are resolved at step-execution time after checkout has
+# populated the workspace, so they side-step the eager-resolution
+# failure mode entirely. External consumers get a conditional sparse
+# checkout of PowerShell-Common at master into `.powershell-common/` so the
+# external `./` branch has a populated path.
 
 on:
   pull_request:
@@ -27,11 +38,14 @@ jobs:
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
 
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      - if: github.repository != 'VitaliiAndreev/PowerShell-Common'
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           repository: VitaliiAndreev/PowerShell-Common
-          ref: ${{ github.repository == 'VitaliiAndreev/PowerShell-Common' && github.sha || 'master' }}
-          path: .ci-common
+          ref: master
+          path: .powershell-common
+          sparse-checkout: .github/actions
+          sparse-checkout-cone-mode: false
 
       # Unit tests run BEFORE the lint pass so the lint helpers'
       # own tests gate the lint's correctness. The lint scans for
@@ -42,20 +56,21 @@ jobs:
       # closes that one-commit gap. The lint is fast (sub-second on
       # ~50 .ps1 files), so the cost of running it second is
       # negligible.
-      - name: Run unit tests
-        shell: pwsh
-        run: |
-          .ci-common/.github/actions/run-unit-tests/Run-Tests.ps1 `
-            -TestsRoot '${{ github.workspace }}'
+      - if: github.repository == 'VitaliiAndreev/PowerShell-Common'
+        uses: ./.github/actions/run-unit-tests
 
-      # Lint pass after the unit suite. Logic + comment-aware regex
-      # live in the script alongside other reusable action helpers;
-      # see its header for rationale.
-      - name: Lint - no bare `return @()`
-        shell: pwsh
-        run: |
-          .ci-common/.github/actions/lint-no-bare-return-empty-array/Test-NoBareReturnEmptyArray.ps1 `
-            -SourceRoot '${{ github.workspace }}'
+      - if: github.repository != 'VitaliiAndreev/PowerShell-Common'
+        uses: ./.powershell-common/.github/actions/run-unit-tests
+
+      - if: github.repository == 'VitaliiAndreev/PowerShell-Common'
+        uses: ./.github/actions/lint-no-bare-return-empty-array
+        with:
+          source-root: ${{ github.workspace }}
+
+      - if: github.repository != 'VitaliiAndreev/PowerShell-Common'
+        uses: ./.powershell-common/.github/actions/lint-no-bare-return-empty-array
+        with:
+          source-root: ${{ github.workspace }}
 
       - name: Upload test results
         if: always()
