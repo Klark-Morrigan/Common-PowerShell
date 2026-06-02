@@ -16,6 +16,7 @@
         # Top-level utilities
         'Assert-RequiredProperties',
         'Assert-Wsl2Ready',
+        'Assert-WslHasBash',
         'ConvertTo-Array',
         'Invoke-ModuleInstall',
         # Retry loop (Public/Retry/)
