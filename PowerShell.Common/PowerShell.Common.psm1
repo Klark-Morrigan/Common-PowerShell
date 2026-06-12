@@ -20,6 +20,9 @@
       whether PowerShell unrolled a single-item collection.
     - Invoke-ModuleInstall: installs a PSGallery module if absent or below a
       minimum version, then imports it.
+    - Limit-RetainedItem: prunes items in a directory by age and/or count
+      (no Windows logrotate equivalent; callers use this for at-write-time
+      retention sweeps on log / diag folders).
     - Invoke-WithRetry: generic retry loop that consumes hashtable-shaped
       retry (ShouldRetry) and backoff (GetDelay) strategies. The classifier
       and pacing are caller-supplied; the loop just orchestrates.
@@ -56,6 +59,7 @@ $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot\Public\Assert-WslHasBash.ps1"
 . "$PSScriptRoot\Public\ConvertTo-Array.ps1"
 . "$PSScriptRoot\Public\Invoke-ModuleInstall.ps1"
+. "$PSScriptRoot\Public\Limit-RetainedItem.ps1"
 
 # Retry primitives - grouped because they form a self-contained family
 # (loop + predicate strategies + backoff strategies). Subdivided by
@@ -84,6 +88,7 @@ Export-ModuleMember -Function `
     Assert-WslHasBash, `
     ConvertTo-Array, `
     Invoke-ModuleInstall, `
+    Limit-RetainedItem, `
     `
     Invoke-WithRetry, `
     New-FileLockRetryStrategy, `
