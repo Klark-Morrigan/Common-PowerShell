@@ -24,12 +24,43 @@
 .PARAMETER TestsRoot
     Root directory of the repo under test. Tests\ must be a direct child.
 
+.PARAMETER LogPath
+    When set, every output stream of the run is redirected into this file
+    instead of the console, and old logs in the same directory are pruned
+    (see -LogRetention). Redirecting inside the script keeps the caller's
+    command line a single bare invocation with no redirection operator,
+    which is the only shape an automated permission resolver can auto-allow.
+    Point this at a DEDICATED directory, not a shared TEMP root, or the
+    retention sweep will also consider neighbouring matching files.
+
+.PARAMETER LogRetention
+    Most-recent log files to keep in the -LogPath directory after each run.
+    0 disables pruning. Ignored unless -LogPath is set.
+
+.PARAMETER LogRetentionFilter
+    Wildcard the retention sweep matches log files against. Narrow this when
+    -LogPath shares a directory with unrelated files. Ignored unless
+    -LogPath is set.
+
 .EXAMPLE
     .\Run-Tests.ps1 -TestsRoot C:\a_Code\Infrastructure-Secrets
+
+.EXAMPLE
+    .\Run-Tests.ps1 -TestsRoot C:\a_Code\Infrastructure-Wsl `
+                    -LogPath   C:\Temp\ps-tests\wsl.log
+
+    Runs silently, capturing all output to wsl.log and keeping the 10 most
+    recent *.log files in C:\Temp\ps-tests.
 #>
 
 param(
-    [string] $TestsRoot = $PSScriptRoot
+    [string] $TestsRoot = $PSScriptRoot,
+
+    [string] $LogPath,
+
+    [int] $LogRetention = 10,
+
+    [string] $LogRetentionFilter = '*.log'
 )
 
 Set-StrictMode -Version Latest
@@ -38,30 +69,15 @@ $ErrorActionPreference = 'Stop'
 . ([IO.Path]::Combine($PSScriptRoot, '..', 'Helpers.ps1'))
 
 # ---------------------------------------------------------------------------
-# Pure helper functions.
+# Helper functions - one per file under lib\, dot-sourced so they are available
+# both to the main block below and to unit tests that dot-source this script.
+# They take sibling-file paths as parameters rather than deriving them from
+# $PSScriptRoot, which inside a dot-sourced function would resolve to lib\.
 # ---------------------------------------------------------------------------
 
-# Returns all *.Tests.ps1 files under TestsDir, excluding the
-# Integration.DockerHost and Integration.DockerTarget subdirectories
-# (those require Docker and are run by separate workflows).
-function Get-UnitTestFiles {
-    param([string] $TestsDir)
-
-    $excludedPrefixes = @('Integration.DockerHost', 'Integration.DockerTarget') |
-        ForEach-Object {
-            $dir = [IO.Path]::Combine($TestsDir, $_)
-            if (Test-Path $dir) {
-                (Get-Item $dir).FullName.TrimEnd('\') + '\'
-            }
-        } |
-        Where-Object { $_ }
-
-    Get-ChildItem -Path $TestsDir -Filter '*.Tests.ps1' -Recurse -ErrorAction SilentlyContinue |
-        Where-Object {
-            $path = $_.FullName
-            -not ($excludedPrefixes | Where-Object { $path.StartsWith($_) })
-        }
-}
+. ([IO.Path]::Combine($PSScriptRoot, 'lib', 'Get-UnitTestFiles.ps1'))
+. ([IO.Path]::Combine($PSScriptRoot, 'lib', 'Invoke-UnitTestRun.ps1'))
+. ([IO.Path]::Combine($PSScriptRoot, 'lib', 'Limit-TestLogRetention.ps1'))
 
 # ---------------------------------------------------------------------------
 # Main execution - skipped when dot-sourced for unit testing.
@@ -69,74 +85,48 @@ function Get-UnitTestFiles {
 
 if ($MyInvocation.InvocationName -ne '.') {
 
-# ---------------------------------------------------------------------------
-# Ensure Pester 5 is available.
-#   Pester 3 ships with Windows PowerShell 5.1 and is incompatible with our
-#   tests (different API). We require >= 5.0 explicitly.
-# ---------------------------------------------------------------------------
+    # Set by Invoke-UnitTestRun, possibly from inside an output redirect, which
+    # is why it is a script-scoped variable and not the function's return value.
+    $script:UnitTestFailedCount = 0
 
-$pester = Get-Module -ListAvailable -Name Pester |
-    Where-Object { $_.Version.Major -ge 5 } |
-    Sort-Object Version -Descending |
-    Select-Object -First 1
+    # Resolved here, where $PSScriptRoot is the action directory, then injected
+    # into the helpers (which live under lib\ and cannot derive them safely).
+    $sharedModuleTest   = [IO.Path]::Combine($PSScriptRoot, 'Module.Tests.ps1')
+    # run-unit-tests -> actions -> .github -> <repo root> -> module Public dir.
+    $retainedItemHelper = [IO.Path]::Combine($PSScriptRoot, '..', '..', '..',
+        'PowerShell.Common', 'Public', 'Limit-RetainedItem.ps1')
 
-if (-not $pester) {
-    Write-Host 'Pester 5 not found - installing ...' -ForegroundColor Cyan
-    Install-Module -Name Pester -MinimumVersion 5.0 `
-        -Scope CurrentUser -Force -SkipPublisherCheck
-}
+    if ($LogPath) {
+        # Self-logging mode. Redirect every stream of the run into $LogPath here,
+        # inside the script, so the CALLER's command stays a single bare
+        # `& '...Run-Tests.ps1' -TestsRoot ... -LogPath ...` with no redirection
+        # operator. That bare shape is the only one a command-permission resolver
+        # can safely auto-allow, so repeated runs stop prompting. The captured
+        # log is read back afterwards (e.g. by read-log-tail).
+        $logDirectory = Split-Path -Parent $LogPath
+        if ($logDirectory -and -not (Test-Path -LiteralPath $logDirectory)) {
+            New-Item -ItemType Directory -Path $logDirectory -Force | Out-Null
+        }
 
-Import-Module Pester -MinimumVersion 5.0
+        & {
+            Invoke-UnitTestRun -TestsRoot $TestsRoot `
+                               -SharedModuleTestPath $sharedModuleTest
+        } *> $LogPath
 
-# ---------------------------------------------------------------------------
-# Discover test files - exclude Integration.DockerHost\ and
-# Integration.DockerTarget\ (both require Docker).
-# ---------------------------------------------------------------------------
+        Limit-TestLogRetention -LogDirectory           $logDirectory `
+                               -Filter                 $LogRetentionFilter `
+                               -MaxItems               $LogRetention `
+                               -RetainedItemHelperPath $retainedItemHelper
 
-$testsDir = [IO.Path]::Combine($TestsRoot, 'Tests')
+        # One concise line to the console (the only output the caller sees in
+        # log mode), so pass/fail is known without opening the log.
+        Write-Host "Unit tests complete - $($script:UnitTestFailedCount) failed. Log: $LogPath"
+    }
+    else {
+        Invoke-UnitTestRun -TestsRoot $TestsRoot `
+                           -SharedModuleTestPath $sharedModuleTest
+    }
 
-$testFiles = Get-UnitTestFiles -TestsDir $testsDir
-
-# ---------------------------------------------------------------------------
-# Inject the shared module registration test.
-#   Detects the module directory by convention: a direct subdirectory of
-#   TestsRoot whose name matches a .psd1 inside it (e.g.
-#   PowerShell.Common\PowerShell.Common.psd1). Sets MODULE_TESTS_ROOT
-#   so the shared test file can locate the module without knowing the repo name.
-# ---------------------------------------------------------------------------
-
-$moduleDir        = Find-ModuleDirectory -RootPath $TestsRoot
-$sharedModuleTest = [IO.Path]::Combine($PSScriptRoot, 'Module.Tests.ps1')
-
-if ($moduleDir -and (Test-Path $sharedModuleTest)) {
-    $env:MODULE_TESTS_ROOT = $moduleDir.FullName
-    $testFiles = @($testFiles) + (Get-Item $sharedModuleTest)
-}
-
-# Guard against running with no test files - Pester throws rather than
-# returning a result object, which breaks the FailedCount check below.
-if (-not $testFiles) {
-    Write-Host 'No unit test files found - nothing to run.' -ForegroundColor Yellow
+    if ($script:UnitTestFailedCount -gt 0) { exit 1 }
     exit 0
 }
-
-$config = New-PesterConfiguration
-# Pass individual file paths so Pester does not re-discover the Tests\ folder
-# (which would include Integration.DockerHost\ and Integration.DockerTarget\
-# even though they were filtered above).
-$config.Run.Path              = @($testFiles.FullName)
-$config.Output.Verbosity      = 'Detailed'
-$config.TestResult.Enabled    = $true
-$config.TestResult.OutputPath = [IO.Path]::Combine($TestsRoot, 'TestResults.xml')
-# PassThru is required for Invoke-Pester to return a result object;
-# without it the return value is $null and FailedCount cannot be read.
-$config.Run.PassThru          = $true
-
-$result = Invoke-Pester -Configuration $config
-
-if ($result.FailedCount -gt 0) {
-    Write-Host "$($result.FailedCount) test(s) failed." -ForegroundColor Red
-    exit 1
-}
-
-} # end if ($MyInvocation.InvocationName -ne '.')
