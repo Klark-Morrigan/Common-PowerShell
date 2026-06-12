@@ -9,13 +9,6 @@
     Current functions:
     - Assert-RequiredProperties: validates object fields are present and
       non-empty; throws a descriptive error if not.
-    - Assert-Wsl2Ready: verifies wsl.exe is on PATH and at least one
-      distro is registered; runs 'wsl --install' and throws a
-      Wsl2NotReady error if not ready so the caller can prompt for reboot.
-    - Assert-WslHasBash: probes the targeted distro for bash on PATH;
-      throws a WslMissingBash error when absent (Docker Desktop's
-      'docker-desktop' default has no bash, so callers that rely on
-      `#!/usr/bin/env bash` need this gate after Assert-Wsl2Ready).
     - ConvertTo-Array: ensures a value is always an array regardless of
       whether PowerShell unrolled a single-item collection.
     - Invoke-ModuleInstall: installs a PSGallery module if absent or below a
@@ -41,6 +34,9 @@
     Hyper-V VM helpers (SSH execution, host file server) were moved to the
     Infrastructure.HyperV module to keep this module focused on genuinely
     generic utilities. GitHub API helpers live in Infrastructure.GitHub.
+    WSL helpers (Assert-Wsl2Ready, Assert-WslHasBash, Invoke-WslShell)
+    moved to Infrastructure.Wsl in 7.0.0; consumers using WSL must now
+    Install/Import that module separately.
 
     Each function lives in its own file under Public\ and is dot-sourced
     below so diffs stay focused on a single function per commit.
@@ -55,8 +51,6 @@ $ErrorActionPreference = 'Stop'
 
 # Top-level utilities (no domain grouping yet).
 . "$PSScriptRoot\Public\Assert-RequiredProperties.ps1"
-. "$PSScriptRoot\Public\Assert-Wsl2Ready.ps1"
-. "$PSScriptRoot\Public\Assert-WslHasBash.ps1"
 . "$PSScriptRoot\Public\ConvertTo-Array.ps1"
 . "$PSScriptRoot\Public\Invoke-ModuleInstall.ps1"
 . "$PSScriptRoot\Public\Limit-RetainedItem.ps1"
@@ -84,8 +78,6 @@ $ErrorActionPreference = 'Stop'
 # run-unit-tests action enforces that every Public\*.ps1 file appears in both.
 Export-ModuleMember -Function `
     Assert-RequiredProperties, `
-    Assert-Wsl2Ready, `
-    Assert-WslHasBash, `
     ConvertTo-Array, `
     Invoke-ModuleInstall, `
     Limit-RetainedItem, `

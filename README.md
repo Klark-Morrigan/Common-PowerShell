@@ -527,26 +527,14 @@ PowerShell-Common/
 |  |        `- New-LinearBackoffStrategy.ps1
 |  |- PowerShell.Common.psm1        # Dot-sources Public\ (recursively); exports Public functions
 |  `- PowerShell.Common.psd1        # Module manifest (version, GUID, exports)
-|- Tests/
-|  |- Assert-RequiredProperties.Tests.ps1
-|  |- ConvertTo-Array.Tests.ps1
-|  |- Invoke-ModuleInstall.Tests.ps1
-|  |- Retry/                            # Mirrors PowerShell.Common\Public\Retry\
-|  |  |- Invoke-WithRetry.Tests.ps1
-|  |  |- TransientErrorStrategies/
-|  |  |  |- New-FileLockRetryStrategy.Tests.ps1
-|  |  |  |- New-TransientNetworkRetryStrategy.Tests.ps1
-|  |  |  `- New-TransientPowerShellModuleInstallRetryStrategy.Tests.ps1
-|  |  `- BackoffStrategies/
-|  |     |- New-ConstantBackoffStrategy.Tests.ps1
-|  |     |- New-CustomBackoffStrategy.Tests.ps1
-|  |     |- New-ExponentialBackoffStrategy.Tests.ps1
-|  |     `- New-LinearBackoffStrategy.Tests.ps1
+|- Tests/                               # One .Tests.ps1 per Public\ fn, mirroring its layout (Retry\, ...)
+|  |- ...                               #   plus these CI-helper tests with no Public\ counterpart:
 |  |- Find-IntegrationTests.Tests.ps1   # Shared CI helper tests
+|  |- Get-UnitTestFiles.Tests.ps1       # run-unit-tests\lib helper
 |  |- Invoke-Publish.Tests.ps1
 |  |- Invoke-TagFromManifest.Tests.ps1
+|  |- Limit-TestLogRetention.Tests.ps1  # run-unit-tests\lib helper (+ .IntegrationTests)
 |  |- Run-IntegrationTests.Tests.ps1
-|  |- Run-Tests.Tests.ps1
 |  |- Test-NoBareReturnEmptyArray.Tests.ps1
 |  `- Integration.DockerHost/           # Integration tests - run in Docker only
 |- .github/
@@ -554,7 +542,13 @@ PowerShell-Common/
 |  |  |- Helpers.ps1                    # Shared PS helpers dot-sourced by action scripts
 |  |  |- check-version-is-new/
 |  |  |- tag-from-manifest/
-|  |  |- run-unit-tests/
+|  |  |- run-unit-tests/                 # Unit test runner (canonical)
+|  |  |  |- Run-Tests.ps1                #   Entry point: dispatch + optional self-logging
+|  |  |  |- Module.Tests.ps1             #   Shared module-registration test (injected)
+|  |  |  `- lib/                         #   Helpers, one per file, dot-sourced
+|  |  |     |- Get-UnitTestFiles.ps1     #     Discovers unit test files (excludes Docker dirs)
+|  |  |     |- Invoke-UnitTestRun.ps1    #     Installs Pester, runs discovered tests
+|  |  |     `- Limit-TestLogRetention.ps1 #   Prunes old logs via Limit-RetainedItem
 |  |  |- run-integration-tests/
 |  |  |- run-ssh-integration-tests/
 |  |  |- scan-integration-tests/

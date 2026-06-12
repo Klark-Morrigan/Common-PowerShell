@@ -1,6 +1,5 @@
 BeforeAll {
-    $Script:ScriptPath = "$PSScriptRoot\..\.github\actions\run-unit-tests\Run-Tests.ps1"
-    . $Script:ScriptPath
+    . "$PSScriptRoot\..\.github\actions\run-unit-tests\lib\Get-UnitTestFiles.ps1"
 }
 
 Describe 'Get-UnitTestFiles' {
