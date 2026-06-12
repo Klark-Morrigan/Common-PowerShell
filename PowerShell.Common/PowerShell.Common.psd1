@@ -1,5 +1,5 @@
 @{
-    ModuleVersion        = '6.3.0'
+    ModuleVersion        = '7.0.0'
     GUID                 = 'b7d3f2a1-4c9e-4f8d-a2b5-3e6d7f8a9b0c'
     Author               = 'Vitaly Andrev'
     Description          = 'Shared PowerShell functions.'
@@ -15,8 +15,6 @@
     FunctionsToExport = @(
         # Top-level utilities
         'Assert-RequiredProperties',
-        'Assert-Wsl2Ready',
-        'Assert-WslHasBash',
         'ConvertTo-Array',
         'Invoke-ModuleInstall',
         'Limit-RetainedItem',
