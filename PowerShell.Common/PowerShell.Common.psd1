@@ -19,6 +19,7 @@
         'Assert-WslHasBash',
         'ConvertTo-Array',
         'Invoke-ModuleInstall',
+        'Limit-RetainedItem',
         # Retry loop (Public/Retry/)
         'Invoke-WithRetry',
         # Transient-error strategies (Public/Retry/TransientErrorStrategies/)
