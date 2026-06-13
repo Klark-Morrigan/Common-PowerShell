@@ -15,7 +15,7 @@ user-visible behavior.
 - [Step 5 - Tagged release of PowerShell-Common](#step-5---tagged-release-of-PowerShell-Common)
 - [Step 6 - Wire preflight into `ci-powershell.yml`](#step-6---wire-preflight-into-ci-powershellyml)
 - [Step 7 - Wire preflight into the docker-host/target workflows](#step-7---wire-preflight-into-the-docker-hosttarget-workflows)
-- [Step 8 - Wire preflight into DotNet-Common `ci-dotnet.yml`](#step-8---wire-preflight-into-dotnet-common-ci-dotnetyml)
+- [Step 8 - Wire preflight into Common-DotNet `ci-dotnet.yml`](#step-8---wire-preflight-into-common-dotnet-ci-dotnetyml)
 - [Cross-cutting notes](#cross-cutting-notes)
 
 ---
@@ -221,7 +221,7 @@ sequenceDiagram
 
 ## Step 5 - Tagged release of PowerShell-Common
 
-**Reason:** DotNet-Common's `ci-dotnet.yml` (Step 8) pins by commit
+**Reason:** Common-DotNet's `ci-dotnet.yml` (Step 8) pins by commit
 SHA per its supply-chain posture. The SHA only exists once the tag
 is cut. Lands before the consumer wire-ins so they pin to a real
 reference rather than to `@master`.
@@ -312,14 +312,14 @@ flowchart LR
 
 ---
 
-## Step 8 - Wire preflight into DotNet-Common `ci-dotnet.yml`
+## Step 8 - Wire preflight into Common-DotNet `ci-dotnet.yml`
 
 **Reason:** Exercises the self-hosted Ubuntu path (image-baked
 `actionlint`, no download). Lands last so the image install (Step
 4) has time to propagate to the runner fleet before the workflow
 becomes a hard dependency on it.
 
-**Changes (in `DotNet-Common`):**
+**Changes (in `Common-DotNet`):**
 - New composite action `.github/actions/lint-workflows-preflight/`
   (single-step wrapper) that does
   `uses: VitaliiAndreev/PowerShell-Common/.github/actions/lint-workflows@<sha>`,
@@ -330,7 +330,7 @@ becomes a hard dependency on it.
   `actions/checkout`, with the local/consumer `if:`-guarded
   duplicate pair that already governs every other step in this
   workflow.
-- `DotNet-Common/README.md`: document the lint preflight in the
+- `Common-DotNet/README.md`: document the lint preflight in the
   ordered job-step list (it becomes step 2, pushing the existing
   cleanup to step 3, etc.).
 

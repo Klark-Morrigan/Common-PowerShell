@@ -16,7 +16,7 @@ or a reference to an undefined needs-output only surfaces at runtime,
 often well after the PR is merged. `actionlint` catches every one of
 these statically. It is already present locally
 (`~/.local/bin/actionlint.exe`) and proved out against
-`DotNet-Common/.github/workflows/ci-dotnet.yml` while landing the
+`Common-DotNet/.github/workflows/ci-dotnet.yml` while landing the
 threshold gate step. Nothing in the org runs it automatically yet.
 
 ## Scope
@@ -34,7 +34,7 @@ threshold gate step. Nothing in the org runs it automatically yet.
   - `PowerShell-Common/.github/workflows/ci-powershell.yml`
   - `PowerShell-Common/.github/workflows/ci-powershell-docker-host.yml`
   - `PowerShell-Common/.github/workflows/ci-powershell-docker-target.yml`
-  - `DotNet-Common/.github/workflows/ci-dotnet.yml`
+  - `Common-DotNet/.github/workflows/ci-dotnet.yml`
 
 ## Out of scope
 - Non-CI reusable workflows (`publish.yml`, `release.yml`, `tag.yml`).
@@ -62,7 +62,7 @@ threshold gate step. Nothing in the org runs it automatically yet.
   `Install-Jdk.ps1`). New tools follow the same shape - a script
   invoked by `Invoke-VmPostProvisioning.ps1` with corresponding
   uninstall and tests.
-- **Two consumption shapes already in use:** DotNet-Common workflows
+- **Two consumption shapes already in use:** Common-DotNet workflows
   invoke composite actions via `uses: ./.github/actions/<name>` (with
   a duplicated `uses: <org>/<repo>/.github/actions/<name>@<ref>`
   fallback for consumer-checkout context). PowerShell-Common
@@ -90,7 +90,7 @@ threshold gate step. Nothing in the org runs it automatically yet.
 - Each target repo's README documents the new preflight step where
   it documents the workflow itself.
 - One tagged release of PowerShell-Common carries the new action
-  so consumers can pin by SHA (the DotNet-Common wiring lands
+  so consumers can pin by SHA (the Common-DotNet wiring lands
   pinned to that SHA, not `@master`).
 
 ## For laymen
@@ -104,5 +104,5 @@ instead of producing a confusing failure halfway through.
 
 ## See also
 - [plan.md](plan.md)
-- [DotNet-Common ci-dotnet.yml](../../../../../DotNet-Common/.github/workflows/ci-dotnet.yml)
+- [Common-DotNet ci-dotnet.yml](../../../../../Common-DotNet/.github/workflows/ci-dotnet.yml)
 - [Install-Jdk.ps1 pattern](../../../../../Infrastructure-Vm-Provisioner/hyper-v/ubuntu/up/post/Install-Jdk.ps1)
