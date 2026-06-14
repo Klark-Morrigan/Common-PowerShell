@@ -18,7 +18,7 @@
     which verifies that every Public\*.ps1 file is registered in the module
     manifest and psm1. Requires the repo to follow the convention:
     a single subdirectory whose name matches its .psd1 (e.g.
-    PowerShell.Common\PowerShell.Common.psd1). If no such directory
+    Common.PowerShell\Common.PowerShell.psd1). If no such directory
     is found the shared test is skipped silently.
 
 .PARAMETER TestsRoot
@@ -94,7 +94,7 @@ if ($MyInvocation.InvocationName -ne '.') {
     $sharedModuleTest   = [IO.Path]::Combine($PSScriptRoot, 'Module.Tests.ps1')
     # run-unit-tests -> actions -> .github -> <repo root> -> module Public dir.
     $retainedItemHelper = [IO.Path]::Combine($PSScriptRoot, '..', '..', '..',
-        'PowerShell.Common', 'Public', 'Limit-RetainedItem.ps1')
+        'Common.PowerShell', 'Public', 'Limit-RetainedItem.ps1')
 
     if ($LogPath) {
         # Self-logging mode. Redirect every stream of the run into $LogPath here,

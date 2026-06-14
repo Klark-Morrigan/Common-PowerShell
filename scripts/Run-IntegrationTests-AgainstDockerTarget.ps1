@@ -17,7 +17,7 @@
 
 .PARAMETER TestsRoot
     Root of the repo under test. Tests\Integration\ must be a direct child.
-    Defaults to the PowerShell-Common root (for testing Common itself).
+    Defaults to the Common-PowerShell root (for testing Common itself).
     Consumer repos pass their own root:
         .ci-common\Run-IntegrationTests-AgainstDockerTarget.ps1 `
             -TestsRoot $PSScriptRoot
@@ -41,7 +41,7 @@ $Script:ImageName = 'infra-ssh-test-image'
 
 # Repo root is one level up now that this script lives under scripts\;
 # the shared repos root is one more level up from there. GitHub-Common is
-# checked out as a sibling of PowerShell-Common under that shared root.
+# checked out as a sibling of Common-PowerShell under that shared root.
 $Script:RepoRoot  = Split-Path -Parent $PSScriptRoot
 $Script:ReposRoot = Split-Path -Parent $Script:RepoRoot
 $Script:DockerfileDir = [IO.Path]::Combine(

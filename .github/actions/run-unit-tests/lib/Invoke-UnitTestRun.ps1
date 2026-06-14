@@ -35,7 +35,7 @@ function Invoke-UnitTestRun {
 
     # Inject the shared module registration test. Detects the module directory
     # by convention: a direct subdirectory of TestsRoot whose name matches a
-    # .psd1 inside it (e.g. PowerShell.Common\PowerShell.Common.psd1). Sets
+    # .psd1 inside it (e.g. Common.PowerShell\Common.PowerShell.psd1). Sets
     # MODULE_TESTS_ROOT so the shared test can locate the module without
     # knowing the repo name.
     $moduleDir = Find-ModuleDirectory -RootPath $TestsRoot

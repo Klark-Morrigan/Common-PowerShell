@@ -10,7 +10,7 @@
     origin/master commit SHA - never the local checkout).
 
     Decoupled from the module's ModuleVersion on purpose: action /
-    workflow releases are tagged here, and the PowerShell.Common .psd1 is
+    workflow releases are tagged here, and the Common.PowerShell .psd1 is
     bumped separately only when there are actual module changes. This
     keeps PSGallery free of versions that contain no PS code change.
 
@@ -38,12 +38,12 @@ $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot 'Find-GitBashExecutable.ps1')
 
-# Sibling layout: c:\a_Code\PowerShell-Common and c:\a_Code\GitHub-Common.
+# Sibling layout: c:\a_Code\Common-PowerShell and c:\a_Code\GitHub-Common.
 # Two levels up from scripts\ to reach the shared repos root.
 $scriptPath = Join-Path $PSScriptRoot '..\..\GitHub-Common\scripts\publish-version-tags.sh'
 if (-not (Test-Path -LiteralPath $scriptPath)) {
     throw "Could not find publish-version-tags.sh at '$scriptPath'. " +
-          'Expected GitHub-Common as a sibling of PowerShell-Common.'
+          'Expected GitHub-Common as a sibling of Common-PowerShell.'
 }
 # Resolve so bash sees an absolute, normalised path (forward slashes are
 # fine for Git Bash; backslashes also work, but resolving removes the ..).
@@ -60,7 +60,7 @@ if ($Version) { $bashArgs += $Version }
 # working directory, so CWD must be inside THIS repo's work tree. The
 # wrapper inherits whatever CWD launched it (the menu launches from the
 # workspace root c:\a_Code\, which is not a git repo), so set it
-# explicitly to PowerShell-Common's root before invoking bash.
+# explicitly to Common-PowerShell's root before invoking bash.
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Push-Location $repoRoot
 try {

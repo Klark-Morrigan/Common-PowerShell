@@ -8,8 +8,8 @@ See [problem.md](problem.md) for context.
 - [Step 1 - Add retry (predicate) strategies](#step-1---add-retry-predicate-strategies)
 - [Step 2 - Add backoff strategies](#step-2---add-backoff-strategies)
 - [Step 3 - Add Invoke-WithRetry generic primitive](#step-3---add-invoke-withretry-generic-primitive)
-- [Step 4 - Remove Invoke-WithNetworkRetry from PowerShell.Common](#step-4---remove-invoke-withnetworkretry-from-infrastructurecommon)
-- [Step 5 - Publish PowerShell.Common 5.0.0](#step-5---publish-infrastructurecommon-500)
+- [Step 4 - Remove Invoke-WithNetworkRetry from Common.PowerShell](#step-4---remove-invoke-withnetworkretry-from-infrastructurecommon)
+- [Step 5 - Publish Common.PowerShell 5.0.0](#step-5---publish-infrastructurecommon-500)
 - [Step 6 - Migrate Infrastructure-Vm-Provisioner](#step-6---migrate-infrastructure-vm-provisioner)
 
 ---
@@ -20,7 +20,7 @@ The retry family lives under its own subtree, with one folder per
 strategy category so each group stays small as more factories are added:
 
 ```
-PowerShell.Common/Public/Retry/
+Common.PowerShell/Public/Retry/
   Invoke-WithRetry.ps1                 (loop - Step 3)
   Invoke-WithNetworkRetry.ps1          (legacy, removed in Step 4)
   TransientErrorStrategies/                          (ShouldRetry classifiers)
@@ -79,12 +79,12 @@ rather than the place where both shape and policy get hammered out at
 once.
 
 **What**: Two new public functions in
-`PowerShell.Common/Public/Retry/TransientErrorStrategies/`.
+`Common.PowerShell/Public/Retry/TransientErrorStrategies/`.
 
 ### `New-TransientNetworkRetryStrategy.ps1`
 
 Wraps the existing `Test-TransientNetworkException` policy (relocated from
-[`Invoke-WithNetworkRetry.ps1`](../../../../PowerShell.Common/Public/Retry/Invoke-WithNetworkRetry.ps1)
+[`Invoke-WithNetworkRetry.ps1`](../../../../Common.PowerShell/Public/Retry/Invoke-WithNetworkRetry.ps1)
 as a file-private helper alongside the factory under
 `Public/Retry/TransientErrorStrategies/`). Returns:
 
@@ -115,9 +115,9 @@ New policy for the VMMS handle-release case. File-private
 ```
 
 Register both factories in
-[`PowerShell.Common.psm1`](../../../../PowerShell.Common/PowerShell.Common.psm1)
+[`Common.PowerShell.psm1`](../../../../Common.PowerShell/Common.PowerShell.psm1)
 and
-[`PowerShell.Common.psd1`](../../../../PowerShell.Common/PowerShell.Common.psd1).
+[`Common.PowerShell.psd1`](../../../../Common.PowerShell/Common.PowerShell.psd1).
 
 **Tests** (`Tests/Retry/TransientErrorStrategies/New-TransientNetworkRetryStrategy.Tests.ps1`,
 `Tests/Retry/TransientErrorStrategies/New-FileLockRetryStrategy.Tests.ps1`):
@@ -139,7 +139,7 @@ The file-lock factory gets new cases: `IOException` -> `$true`, nested
 
 ```mermaid
 graph LR
-  subgraph PowerShell.Common
+  subgraph Common.PowerShell
     NTN[New-TransientNetworkRetryStrategy NEW]
     NFL[New-FileLockRetryStrategy NEW]
     TTNE[Test-TransientNetworkException - relocated, file-private]
@@ -157,7 +157,7 @@ graph LR
 of the loop. Splitting backoff from retry strategies in a separate commit
 keeps each diff focused on a single concept and makes review trivial.
 
-**What**: Four new public factories in `PowerShell.Common/Public/Retry/BackoffStrategies/`.
+**What**: Four new public factories in `Common.PowerShell/Public/Retry/BackoffStrategies/`.
 
 ### `New-ExponentialBackoffStrategy.ps1`
 
@@ -214,9 +214,9 @@ This is the escape hatch for cases the built-ins do not cover - HTTP 429
 with `Retry-After`, jittered exponential, deadline-aware backoff, etc.
 
 Register all four in
-[`PowerShell.Common.psm1`](../../../../PowerShell.Common/PowerShell.Common.psm1)
+[`Common.PowerShell.psm1`](../../../../Common.PowerShell/Common.PowerShell.psm1)
 and
-[`PowerShell.Common.psd1`](../../../../PowerShell.Common/PowerShell.Common.psd1).
+[`Common.PowerShell.psd1`](../../../../Common.PowerShell/Common.PowerShell.psd1).
 
 **Tests** (one file per factory):
 
@@ -233,7 +233,7 @@ For `New-CustomBackoffStrategy`:
 
 ```mermaid
 graph LR
-  subgraph PowerShell.Common backoff strategies
+  subgraph Common.PowerShell backoff strategies
     EXP[New-ExponentialBackoffStrategy]
     LIN[New-LinearBackoffStrategy]
     CON[New-ConstantBackoffStrategy]
@@ -250,7 +250,7 @@ is a thin orchestrator. Landing it last in the additive sequence keeps its
 diff focused on the orchestration shape rather than mixing in policy
 details.
 
-**What**: New `PowerShell.Common/Public/Retry/Invoke-WithRetry.ps1`.
+**What**: New `Common.PowerShell/Public/Retry/Invoke-WithRetry.ps1`.
 
 ### Parameters
 
@@ -309,9 +309,9 @@ for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
 fired - useful when multiple strategies are composed.
 
 Register in
-[`PowerShell.Common.psm1`](../../../../PowerShell.Common/PowerShell.Common.psm1)
+[`Common.PowerShell.psm1`](../../../../Common.PowerShell/Common.PowerShell.psm1)
 and
-[`PowerShell.Common.psd1`](../../../../PowerShell.Common/PowerShell.Common.psd1).
+[`Common.PowerShell.psd1`](../../../../Common.PowerShell/Common.PowerShell.psd1).
 
 **Tests** (`Tests/Retry/Invoke-WithRetry.Tests.ps1`):
 
@@ -374,17 +374,17 @@ sequenceDiagram
 
 ---
 
-## Step 4 - Remove Invoke-WithNetworkRetry from PowerShell.Common
+## Step 4 - Remove Invoke-WithNetworkRetry from Common.PowerShell
 
 **Reason**: `Invoke-WithRetry` with `New-TransientNetworkRetryStrategy`
 fully subsumes `Invoke-WithNetworkRetry`. Two existing consumers (the JDK
 acquisition pair in Vm-Provisioner) are easy to update in Step 6. Removing
 it now keeps the public surface to a single retry entry point.
 
-**What**: Changes in `PowerShell.Common`.
+**What**: Changes in `Common.PowerShell`.
 
 - Delete
-  [`Invoke-WithNetworkRetry.ps1`](../../../../PowerShell.Common/Public/Retry/Invoke-WithNetworkRetry.ps1)
+  [`Invoke-WithNetworkRetry.ps1`](../../../../Common.PowerShell/Public/Retry/Invoke-WithNetworkRetry.ps1)
   (its `Test-TransientNetworkException` already relocated as a private
   helper alongside `New-TransientNetworkRetryStrategy` in Step 1).
 - Delete
@@ -393,9 +393,9 @@ it now keeps the public surface to a single retry entry point.
   `New-TransientNetworkRetryStrategy.Tests.ps1` in Step 1; the retry-loop
   assertions are covered by `Invoke-WithRetry.Tests.ps1` in Step 3).
 - Remove `Invoke-WithNetworkRetry` from `FunctionsToExport` in
-  [`PowerShell.Common.psd1`](../../../../PowerShell.Common/PowerShell.Common.psd1).
+  [`Common.PowerShell.psd1`](../../../../Common.PowerShell/Common.PowerShell.psd1).
 - Remove the dot-source and `Export-ModuleMember` entry from
-  [`PowerShell.Common.psm1`](../../../../PowerShell.Common/PowerShell.Common.psm1);
+  [`Common.PowerShell.psm1`](../../../../Common.PowerShell/Common.PowerShell.psm1);
   update the description block to reference `Invoke-WithRetry` and the
   strategy factories instead.
 
@@ -404,7 +404,7 @@ list. No new tests authored - this is a removal step.
 
 ```mermaid
 graph LR
-  subgraph PowerShell.Common
+  subgraph Common.PowerShell
     IWR[Invoke-WithRetry]
     NTN[New-TransientNetworkRetryStrategy]
     GONE[Invoke-WithNetworkRetry - removed]
@@ -415,14 +415,14 @@ graph LR
 
 ---
 
-## Step 5 - Publish PowerShell.Common 5.0.0
+## Step 5 - Publish Common.PowerShell 5.0.0
 
 **Reason**: Step 4 removes a public function, so semver requires a major
 bump. Publishing before Step 6 means the consumer migration depends on a
 real PSGallery version rather than a local checkout.
 
 **What**: Bump `ModuleVersion` in
-[`PowerShell.Common.psd1`](../../../../PowerShell.Common/PowerShell.Common.psd1)
+[`Common.PowerShell.psd1`](../../../../Common.PowerShell/Common.PowerShell.psd1)
 from `4.1.0` to `5.0.0`. Let the release workflow publish to PSGallery.
 
 **Tests**: CI runs the full Common test suite on the release tag. No new
@@ -431,8 +431,8 @@ tests authored.
 ```mermaid
 graph LR
   subgraph PSGallery
-    V41[PowerShell.Common 4.1.0]
-    V50[PowerShell.Common 5.0.0<br/>+ Invoke-WithRetry<br/>+ retry strategies<br/>+ backoff strategies<br/>- Invoke-WithNetworkRetry]
+    V41[Common.PowerShell 4.1.0]
+    V50[Common.PowerShell 5.0.0<br/>+ Invoke-WithRetry<br/>+ retry strategies<br/>+ backoff strategies<br/>- Invoke-WithNetworkRetry]
   end
   V41 -->|superseded by| V50
 ```
@@ -451,7 +451,7 @@ surface in one migration window.
 ### Module install floor
 
 Bump the `MinimumVersion` argument in whichever `Invoke-ModuleInstall` call
-loads `PowerShell.Common` to `5.0.0`.
+loads `Common.PowerShell` to `5.0.0`.
 
 ### Network-retry call sites
 
@@ -506,7 +506,7 @@ In
 
 - Remove the `Describe 'Remove-ItemWithRetry'` block - its assertions are
   covered by `Invoke-WithRetry.Tests.ps1` plus the backoff-strategy tests
-  in PowerShell.Common.
+  in Common.PowerShell.
 - The `Invoke-VmRemoval` tests mock `Invoke-WithRetry` (passing the
   script block through) rather than `Start-Sleep` / `Remove-Item`
   directly. This decouples them from the retry implementation.
@@ -526,7 +526,7 @@ graph LR
     ADO[Resolve-AdoptiumRelease]
     IVR[Invoke-VmRemoval]
   end
-  subgraph PSGallery - PowerShell.Common 5.0.0
+  subgraph PSGallery - Common.PowerShell 5.0.0
     IWR[Invoke-WithRetry]
     NTN[New-TransientNetworkRetryStrategy]
     NFL[New-FileLockRetryStrategy]

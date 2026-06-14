@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Runs integration tests for the PowerShell.Common module in Docker.
+    Runs integration tests for the Common.PowerShell module in Docker.
 
 .DESCRIPTION
     Thin wrapper around the shared Run-IntegrationTests.ps1 action script.

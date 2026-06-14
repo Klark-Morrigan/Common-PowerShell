@@ -1,7 +1,7 @@
 BeforeAll {
     # Dot-source the Public file directly so both the exported factory and
     # the file-private Test-TransientPowerShellModuleInstallException land in test scope.
-    . "$PSScriptRoot\..\..\..\PowerShell.Common\Public\Retry\TransientErrorStrategies\New-TransientPowerShellModuleInstallRetryStrategy.ps1"
+    . "$PSScriptRoot\..\..\..\Common.PowerShell\Public\Retry\TransientErrorStrategies\New-TransientPowerShellModuleInstallRetryStrategy.ps1"
 
     # Hand-rolled ErrorRecord factory. ErrorDetails can carry the operator-
     # facing message that PowerShellGet sometimes uses instead of populating
@@ -61,7 +61,7 @@ Describe 'New-TransientPowerShellModuleInstallRetryStrategy ShouldRetry predicat
             # the strategy can see it.
             $ex  = [Exception]::new(
                 "No match was found for the specified search criteria and " +
-                "module name 'PowerShell.Common'. " +
+                "module name 'Common.PowerShell'. " +
                 "(caused by: Unable to resolve package source " +
                 "'https://www.powershellgallery.com/api/v2'.)")
             $rec = New-TestErrorRecord -Exception $ex

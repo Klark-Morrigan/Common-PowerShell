@@ -24,7 +24,7 @@ isolation from the config changes in Step 2.
 
 | File | Change |
 |---|---|
-| `PowerShell.Common/Public/Assert-RequiredProperties.ps1` | Replace `Get-Member` call; remove three stale "PS 5.1" comments |
+| `Common.PowerShell/Public/Assert-RequiredProperties.ps1` | Replace `Get-Member` call; remove three stale "PS 5.1" comments |
 
 ### Detail
 
@@ -69,7 +69,7 @@ config/docs with no logic - one reviewable, shippable commit.
 
 | File | Change |
 |---|---|
-| `PowerShell.Common/PowerShell.Common.psd1` | `PowerShellVersion` 5.1 -> 7.0; add `CompatiblePSEditions = @('Core')`; bump `ModuleVersion` (breaking change - major bump recommended) |
+| `Common.PowerShell/Common.PowerShell.psd1` | `PowerShellVersion` 5.1 -> 7.0; add `CompatiblePSEditions = @('Core')`; bump `ModuleVersion` (breaking change - major bump recommended) |
 | `.github/workflows/ci-powershell.yml` | Delete `ci-ps51` job entirely; keep `ci-ps7` unchanged |
 | `README.md` | Update requirements to "PowerShell 7+" |
 

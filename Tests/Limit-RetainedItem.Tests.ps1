@@ -1,5 +1,5 @@
 BeforeAll {
-    . "$PSScriptRoot\..\PowerShell.Common\Public\Limit-RetainedItem.ps1"
+    . "$PSScriptRoot\..\Common.PowerShell\Public\Limit-RetainedItem.ps1"
 
     function New-LogFile {
         param(

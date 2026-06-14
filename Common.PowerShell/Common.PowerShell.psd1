@@ -5,7 +5,7 @@
     Description          = 'Shared PowerShell functions.'
     PowerShellVersion    = '7.0'
     CompatiblePSEditions = @('Core')
-    RootModule        = 'PowerShell.Common.psm1'
+    RootModule        = 'Common.PowerShell.psm1'
     # FunctionsToExport is module discovery metadata: used by
     # Get-Module -ListAvailable, Find-Module, and PSGallery without loading
     # the module. It does NOT control what is callable at runtime - that is

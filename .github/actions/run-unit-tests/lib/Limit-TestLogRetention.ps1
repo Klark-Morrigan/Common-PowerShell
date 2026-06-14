@@ -1,5 +1,5 @@
 # Prunes old log files in the -LogPath directory using the shared logrotate
-# helper from PowerShell.Common (Limit-RetainedItem).
+# helper from Common.PowerShell (Limit-RetainedItem).
 #
 #   RetainedItemHelperPath is injected by the caller rather than derived here:
 #   this file lives under lib\, so its own $PSScriptRoot would point at the

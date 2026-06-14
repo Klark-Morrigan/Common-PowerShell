@@ -3,7 +3,7 @@ BeforeAll {
     # the file-private Test-TransientNetworkException land in test scope.
     # At the file level Test-TransientNetworkException is just another
     # function; in module form it is not exported.
-    . "$PSScriptRoot\..\..\..\PowerShell.Common\Public\Retry\TransientErrorStrategies\New-TransientNetworkRetryStrategy.ps1"
+    . "$PSScriptRoot\..\..\..\Common.PowerShell\Public\Retry\TransientErrorStrategies\New-TransientNetworkRetryStrategy.ps1"
 
     # Hand-rolled ErrorRecord factory. Pester's ParameterFilter cannot
     # synthesise ErrorRecords for us, and we need the exception chain to

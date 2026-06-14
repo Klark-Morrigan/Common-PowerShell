@@ -12,7 +12,7 @@
 
 ## Context
 
-The module manifest (`PowerShell.Common.psd1`) currently declares:
+The module manifest (`Common.PowerShell.psd1`) currently declares:
 
 ```powershell
 PowerShellVersion = '5.1'
@@ -33,7 +33,7 @@ However:
 
 | Area | Current state | Target state |
 |------|--------------|--------------|
-| `PowerShell.Common.psd1` | `PowerShellVersion = '5.1'`, no `CompatiblePSEditions` | `PowerShellVersion = '7.0'`, `CompatiblePSEditions = @('Core')` |
+| `Common.PowerShell.psd1` | `PowerShellVersion = '5.1'`, no `CompatiblePSEditions` | `PowerShellVersion = '7.0'`, `CompatiblePSEditions = @('Core')` |
 | `ci-powershell.yml` | Two jobs: `ci-ps51` (PowerShell 5.1) and `ci-ps7` (PowerShell 7) | One job: `ci-ps7` only |
 | `Assert-RequiredProperties.ps1` | Uses `Get-Member -MemberType NoteProperty` (chosen for 5.1 compat) | `$Object.PSObject.Properties.Name` (idiomatic PS 7) |
 | `Assert-RequiredProperties.ps1` | Three comments referencing "PS 5.1" | Comments updated or removed |
