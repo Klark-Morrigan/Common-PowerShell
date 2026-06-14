@@ -57,7 +57,7 @@ and letting the VM fetch it.
 
 ## Scope
 
-**PowerShell.Common** (this repo) - new shared helpers:
+**Common.PowerShell** (this repo) - new shared helpers:
 - `Start-VmFileServer` - binds HttpListener to the switch IP, opens firewall
   rule, returns a server handle.
 - `Stop-VmFileServer` - closes the listener and removes the firewall rule.

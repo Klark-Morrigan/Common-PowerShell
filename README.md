@@ -1,4 +1,4 @@
-# PowerShell-Common
+# Common-PowerShell
 
 Shared PowerShell functions and reusable PowerShell centric GitHub composite actions and workflows.
 
@@ -98,28 +98,28 @@ actions that every infrastructure module shares - see
 ### Bootstrap note
 
 `Invoke-ModuleInstall` cannot install itself. Each consumer script that needs
-this module must include a short inline guard to install `PowerShell.Common`
+this module must include a short inline guard to install `Common.PowerShell`
 first - this is a one-time cost per script, and all other module installs then
 flow through `Invoke-ModuleInstall`.
 
 ```powershell
 # Inline bootstrap - cannot use Invoke-ModuleInstall to install itself.
-$_common = Get-Module -ListAvailable -Name PowerShell.Common |
+$_common = Get-Module -ListAvailable -Name Common.PowerShell |
     Sort-Object Version -Descending | Select-Object -First 1
 if (-not $_common -or $_common.Version -lt [Version]'4.0.1') {
-    Install-Module PowerShell.Common -Scope CurrentUser -Force
+    Install-Module Common.PowerShell -Scope CurrentUser -Force
     # Re-query so the comparison below uses the freshly installed version.
-    $_common = Get-Module -ListAvailable -Name PowerShell.Common |
+    $_common = Get-Module -ListAvailable -Name Common.PowerShell |
         Sort-Object Version -Descending | Select-Object -First 1
 }
 # Reload only when the loaded state differs from the target (multiple
 # versions live, or wrong version live). Mirrors the conditional in
 # Invoke-ModuleInstall - inlined here because the bootstrap installs
 # the very module that defines that function.
-$_loaded = @(Get-Module -Name PowerShell.Common)
+$_loaded = @(Get-Module -Name Common.PowerShell)
 if ($_loaded.Count -ne 1 -or $_loaded[0].Version -ne $_common.Version) {
     if ($_loaded) { $_loaded | Remove-Module -Force }
-    Import-Module PowerShell.Common -Force -ErrorAction Stop
+    Import-Module Common.PowerShell -Force -ErrorAction Stop
 }
 ```
 
@@ -133,13 +133,13 @@ above - no manual step needed.
 To install manually:
 
 ```powershell
-Install-Module PowerShell.Common -Scope CurrentUser
+Install-Module Common.PowerShell -Scope CurrentUser
 ```
 
 To update an existing installation:
 
 ```powershell
-Update-Module PowerShell.Common
+Update-Module Common.PowerShell
 ```
 
 **For local development of this module:** use `scripts\Install.ps1` to install
@@ -154,8 +154,8 @@ but not the version numbering. Each has its own release flow.
 
 | Stream | Tag shape | Driven by | Consumed by |
 |---|---|---|---|
-| Module | `X.Y.Z` (e.g. `6.0.0`) | Automated: `tag-from-manifest` on `.psd1` bump | `Install-Module PowerShell.Common` from PSGallery |
-| Actions | `vX.Y.Z` + rolling `vX` (e.g. `v7.0.0`, `v7`) | Manual: [scripts/Publish-VersionTags.ps1](scripts/Publish-VersionTags.ps1) | Other repos pinning `uses: VitaliiAndreev/PowerShell-Common/.github/.../<name>@vN` |
+| Module | `X.Y.Z` (e.g. `6.0.0`) | Automated: `tag-from-manifest` on `.psd1` bump | `Install-Module Common.PowerShell` from PSGallery |
+| Actions | `vX.Y.Z` + rolling `vX` (e.g. `v7.0.0`, `v7`) | Manual: [scripts/Publish-VersionTags.ps1](scripts/Publish-VersionTags.ps1) | Other repos pinning `uses: VitaliiAndreev/Common-PowerShell/.github/.../<name>@vN` |
 
 The two namespaces never collide (`7.0.0` and `v7.0.0` are different tag
 names), so each stream can advance on its own cadence. Numbers across
@@ -163,7 +163,7 @@ streams may drift; they are not required to align.
 
 ### Shipping a module release (PSGallery)
 
-1. Bump `ModuleVersion` in [PowerShell.Common/PowerShell.Common.psd1](PowerShell.Common/PowerShell.Common.psd1)
+1. Bump `ModuleVersion` in [Common.PowerShell/Common.PowerShell.psd1](Common.PowerShell/Common.PowerShell.psd1)
 2. Open a PR, get it reviewed and merged
 
 On merge, [.github/workflows/tag.yml](.github/workflows/tag.yml) runs both
@@ -505,8 +505,8 @@ sibling repos call them via `workflow_call` and `uses:` references to
 ## Repo structure
 
 ```
-PowerShell-Common/
-|- PowerShell.Common/
+Common-PowerShell/
+|- Common.PowerShell/
 |  |- Private/                          # Module-internal helpers (not exported); mirrors Public\ layout
 |  |  `- Retry/
 |  |     `- Assert-RetryStrategyShape.ps1
@@ -525,8 +525,8 @@ PowerShell-Common/
 |  |        |- New-CustomBackoffStrategy.ps1
 |  |        |- New-ExponentialBackoffStrategy.ps1
 |  |        `- New-LinearBackoffStrategy.ps1
-|  |- PowerShell.Common.psm1        # Dot-sources Public\ (recursively); exports Public functions
-|  `- PowerShell.Common.psd1        # Module manifest (version, GUID, exports)
+|  |- Common.PowerShell.psm1        # Dot-sources Public\ (recursively); exports Public functions
+|  `- Common.PowerShell.psd1        # Module manifest (version, GUID, exports)
 |- Tests/                               # One .Tests.ps1 per Public\ fn, mirroring its layout (Retry\, ...)
 |  |- ...                               #   plus these CI-helper tests with no Public\ counterpart:
 |  |- Find-IntegrationTests.Tests.ps1   # Shared CI helper tests

@@ -5,7 +5,7 @@
 BeforeAll {
     . "$PSScriptRoot\..\.github\actions\run-unit-tests\lib\Limit-TestLogRetention.ps1"
     $Script:RetainedItemHelper =
-        (Resolve-Path "$PSScriptRoot\..\PowerShell.Common\Public\Limit-RetainedItem.ps1").Path
+        (Resolve-Path "$PSScriptRoot\..\Common.PowerShell\Public\Limit-RetainedItem.ps1").Path
 }
 
 Describe 'Limit-TestLogRetention.IntegrationTests' {

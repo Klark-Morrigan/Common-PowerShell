@@ -1,7 +1,7 @@
 BeforeAll {
     # Dot-source the Public file directly so both the exported factory and
     # the file-private Test-FileLockException land in test scope.
-    . "$PSScriptRoot\..\..\..\PowerShell.Common\Public\Retry\TransientErrorStrategies\New-FileLockRetryStrategy.ps1"
+    . "$PSScriptRoot\..\..\..\Common.PowerShell\Public\Retry\TransientErrorStrategies\New-FileLockRetryStrategy.ps1"
 
     # Hand-rolled ErrorRecord factory; same rationale as the
     # transient-network strategy tests.

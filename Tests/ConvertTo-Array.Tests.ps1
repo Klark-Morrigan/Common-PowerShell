@@ -1,5 +1,5 @@
 BeforeAll {
-    . "$PSScriptRoot\..\PowerShell.Common\Public\ConvertTo-Array.ps1"
+    . "$PSScriptRoot\..\Common.PowerShell\Public\ConvertTo-Array.ps1"
 }
 
 Describe 'ConvertTo-Array' {

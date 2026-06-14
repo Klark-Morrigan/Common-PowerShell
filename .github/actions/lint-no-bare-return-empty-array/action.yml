@@ -3,7 +3,7 @@ description: >
   Fails the build if any production .ps1 under source-root contains a
   bare `return @()`. Wraps Test-NoBareReturnEmptyArray.ps1 so this
   lint can be consumed via `uses:` from any downstream workflow,
-  matching the rest of the PowerShell-Common composite-action shape.
+  matching the rest of the Common-PowerShell composite-action shape.
 
 inputs:
   source-root:

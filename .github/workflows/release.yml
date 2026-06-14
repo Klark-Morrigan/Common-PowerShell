@@ -6,7 +6,7 @@ on:
       - master
     paths:
       # Only fire when the manifest itself changes, not on every push.
-      - 'PowerShell.Common/PowerShell.Common.psd1'
+      - 'Common.PowerShell/Common.PowerShell.psd1'
   workflow_dispatch:
 
 jobs:
@@ -21,7 +21,7 @@ jobs:
       - id: check
         uses: ./.github/actions/check-version-is-new
         with:
-          psd1: 'PowerShell.Common\PowerShell.Common.psd1'
+          psd1: 'Common.PowerShell\Common.PowerShell.psd1'
 
   test-unit:
     needs: check-version
@@ -45,13 +45,13 @@ jobs:
       contents: write
     uses: ./.github/workflows/tag.yml
     with:
-      psd1: 'PowerShell.Common\PowerShell.Common.psd1'
+      psd1: 'Common.PowerShell\Common.PowerShell.psd1'
 
   publish:
     needs: tag
     if: needs.tag.outputs.tag_created == 'true'
     uses: ./.github/workflows/publish.yml
     with:
-      module-path: PowerShell.Common
+      module-path: Common.PowerShell
     secrets:
       PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}

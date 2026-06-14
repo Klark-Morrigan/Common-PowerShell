@@ -3,21 +3,21 @@
 See [problem.md](problem.md) for context.
 
 ## Index
-- [Step 1 - `Get-VmSwitchHostIp` in PowerShell.Common](#step-1---get-vmswitchhostip-in-infrastructurecommon)
-- [Step 2 - HTTP file server primitives in PowerShell.Common](#step-2---http-file-server-primitives-in-infrastructurecommon)
-- [Step 3 - `Add-VmFileServerFile` in PowerShell.Common](#step-3---add-vmfileserverfile-in-infrastructurecommon)
+- [Step 1 - `Get-VmSwitchHostIp` in Common.PowerShell](#step-1---get-vmswitchhostip-in-infrastructurecommon)
+- [Step 2 - HTTP file server primitives in Common.PowerShell](#step-2---http-file-server-primitives-in-infrastructurecommon)
+- [Step 3 - `Add-VmFileServerFile` in Common.PowerShell](#step-3---add-vmfileserverfile-in-infrastructurecommon)
 - [Step 4 - Host server support in Infrastructure-GitHubRunners](#step-4---host-server-support-in-infrastructure-githubrunners)
 - [Step 5 - Host server support in Infrastructure-E2E](#step-5---host-server-support-in-infrastructure-e2e)
 
 ---
 
-## Step 1 - `Get-VmSwitchHostIp` in PowerShell.Common
+## Step 1 - `Get-VmSwitchHostIp` in Common.PowerShell
 
 **Reason**: All callers need to find the Windows host's IP on the internal Hyper-V
 switch to construct the server URL. Centralising this avoids repeated prefix-matching
 logic spread across three repos.
 
-**What**: New public function in `PowerShell.Common/Public/Get-VmSwitchHostIp.ps1`.
+**What**: New public function in `Common.PowerShell/Public/Get-VmSwitchHostIp.ps1`.
 Given any VM IP address on the switch, finds the host adapter's IP in the same /24
 by scanning `Get-NetIPAddress` for a matching prefix.
 
@@ -34,7 +34,7 @@ Get-VmSwitchHostIp -VmIpAddress '10.10.0.50'
 
 ---
 
-## Step 2 - HTTP file server primitives in PowerShell.Common
+## Step 2 - HTTP file server primitives in Common.PowerShell
 
 **Reason**: The persistent HTTP server is the core primitive. Everything else builds
 on it. Isolating it in Common makes it independently testable and reusable across
@@ -43,7 +43,7 @@ makes it structurally impossible for callers to leak the listener or firewall ru
 
 **What**: One public function and three private helpers.
 
-`Invoke-WithVmFileServer` in `PowerShell.Common/Public/Invoke-WithVmFileServer.ps1`
+`Invoke-WithVmFileServer` in `Common.PowerShell/Public/Invoke-WithVmFileServer.ps1`
 - Accepts `-VmIpAddress` or `-HostIp`, and `-Port` (default 8745).
 - Starts the server, passes the handle to `-ScriptBlock`, stops in `finally`.
 - Script block output flows through to the caller.
@@ -56,7 +56,7 @@ Invoke-WithVmFileServer -VmIpAddress '10.10.0.50' -ScriptBlock {
 }
 ```
 
-`Start-VmFileServer` in `PowerShell.Common/Private/Start-VmFileServer.ps1`:
+`Start-VmFileServer` in `Common.PowerShell/Private/Start-VmFileServer.ps1`:
 - Calls `Get-VmSwitchHostIp` to find the host IP, or accepts an explicit `-HostIp`.
 - Creates a temp staging directory.
 - Opens a Windows Firewall inbound rule for the port.
@@ -66,14 +66,14 @@ Invoke-WithVmFileServer -VmIpAddress '10.10.0.50' -ScriptBlock {
 - Returns a server handle (`[PSCustomObject]`) with: `HostIp`, `Port`, `BaseUrl`,
   `StagingDir`, `Listener`, `Runspace`, `PowerShell`, `FirewallRuleName`.
 
-`Stop-VmFileServer` in `PowerShell.Common/Private/Stop-VmFileServer.ps1`:
+`Stop-VmFileServer` in `Common.PowerShell/Private/Stop-VmFileServer.ps1`:
 - Calls `$Server.Listener.Stop()` - causes `GetContext()` to throw, exiting the
   background loop cleanly.
 - Disposes the runspace and PowerShell instance.
 - Removes the firewall rule.
 - Deletes the staging directory.
 
-`Get-VmSwitchHostIp` in `PowerShell.Common/Private/Get-VmSwitchHostIp.ps1`:
+`Get-VmSwitchHostIp` in `Common.PowerShell/Private/Get-VmSwitchHostIp.ps1`:
 - Called internally by `Start-VmFileServer` when `-VmIpAddress` is used.
 - See [Step 1](#step-1---get-vmswitchhostip-in-infrastructurecommon) for details.
 
@@ -120,13 +120,13 @@ sequenceDiagram
 
 ---
 
-## Step 3 - `Add-VmFileServerFile` in PowerShell.Common
+## Step 3 - `Add-VmFileServerFile` in Common.PowerShell
 
 **Reason**: Callers hold files in various locations (prefetch cache, arbitrary paths).
 A single helper copies the file into the server's staging directory and returns the
 URL, so callers don't construct paths manually.
 
-**What**: New public function in `PowerShell.Common/Public/Add-VmFileServerFile.ps1`.
+**What**: New public function in `Common.PowerShell/Public/Add-VmFileServerFile.ps1`.
 
 ```powershell
 # Copies $LocalPath to the server's staging directory (idempotent - skips

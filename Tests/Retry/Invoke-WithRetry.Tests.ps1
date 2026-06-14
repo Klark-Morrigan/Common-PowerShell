@@ -2,9 +2,9 @@ BeforeAll {
     # Dot-source the loop plus the default-backoff factory it falls back to
     # when no -BackoffStrategy is supplied. Strategy factories used by the
     # specific assertions are sourced as needed alongside.
-    . "$PSScriptRoot\..\..\PowerShell.Common\Private\Retry\Assert-RetryStrategyShape.ps1"
-    . "$PSScriptRoot\..\..\PowerShell.Common\Public\Retry\BackoffStrategies\New-ExponentialBackoffStrategy.ps1"
-    . "$PSScriptRoot\..\..\PowerShell.Common\Public\Retry\Invoke-WithRetry.ps1"
+    . "$PSScriptRoot\..\..\Common.PowerShell\Private\Retry\Assert-RetryStrategyShape.ps1"
+    . "$PSScriptRoot\..\..\Common.PowerShell\Public\Retry\BackoffStrategies\New-ExponentialBackoffStrategy.ps1"
+    . "$PSScriptRoot\..\..\Common.PowerShell\Public\Retry\Invoke-WithRetry.ps1"
 
     # Test-only zero-delay backoff so the suite stays fast and deterministic.
     function New-NoSleepBackoff {

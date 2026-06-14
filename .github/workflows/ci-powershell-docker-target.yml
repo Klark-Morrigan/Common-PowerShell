@@ -9,12 +9,12 @@ name: CI (Docker target)
 #
 #   jobs:
 #     ci-docker-target:
-#       uses: VitaliiAndreev/PowerShell-Common/.github/workflows/ci-powershell-docker-target.yml@master
+#       uses: VitaliiAndreev/Common-PowerShell/.github/workflows/ci-powershell-docker-target.yml@master
 #
-# Every `uses:` for a PowerShell-Common composite is a local `./` path
+# Every `uses:` for a Common-PowerShell composite is a local `./` path
 # (see ci-powershell.yml header for the eager-resolution rationale).
 # External consumers get a conditional sparse checkout of
-# PowerShell-Common at master into `.powershell-common/`. The
+# Common-PowerShell at master into `.powershell-common/`. The
 # build-ssh-test-image composite lives in GitHub-Common, so the same
 # pattern fetches GitHub-Common unconditionally into `.github-common/`.
 
@@ -37,10 +37,10 @@ jobs:
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
 
-      - if: github.repository != 'VitaliiAndreev/PowerShell-Common'
+      - if: github.repository != 'VitaliiAndreev/Common-PowerShell'
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
-          repository: VitaliiAndreev/PowerShell-Common
+          repository: VitaliiAndreev/Common-PowerShell
           ref: master
           path: .powershell-common
           sparse-checkout: .github/actions
@@ -58,14 +58,14 @@ jobs:
 
       - name: Scan for integration tests (self)
         id: scan-self
-        if: ${{ github.repository == 'VitaliiAndreev/PowerShell-Common' }}
+        if: ${{ github.repository == 'VitaliiAndreev/Common-PowerShell' }}
         uses: ./.github/actions/scan-integration-tests
         with:
           test-dir: Tests/Integration.DockerTarget
 
       - name: Scan for integration tests (consumer)
         id: scan-consumer
-        if: ${{ github.repository != 'VitaliiAndreev/PowerShell-Common' }}
+        if: ${{ github.repository != 'VitaliiAndreev/Common-PowerShell' }}
         uses: ./.powershell-common/.github/actions/scan-integration-tests
         with:
           test-dir: Tests/Integration.DockerTarget

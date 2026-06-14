@@ -1,6 +1,6 @@
 <#
 .NOTES
-    Dot-sourced by PowerShell.Common.psm1. Generic retry loop that
+    Dot-sourced by Common.PowerShell.psm1. Generic retry loop that
     consumes hashtable-shaped retry and backoff strategies (see the
     factories under Public/Retry/TransientErrorStrategies/ and
     Public/Retry/BackoffStrategies/). Strategy-shape validation lives in

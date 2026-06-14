@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Installs PowerShell.Common locally from source for development use.
+    Installs Common.PowerShell locally from source for development use.
 
 .DESCRIPTION
     For development and testing of the module itself only.
@@ -17,24 +17,24 @@ $ErrorActionPreference = 'Stop'
 
 # Repo root is one level up now that this script lives under scripts\.
 $repoRoot    = Split-Path -Parent $PSScriptRoot
-$moduleSrc   = Join-Path $repoRoot 'PowerShell.Common'
+$moduleSrc   = Join-Path $repoRoot 'Common.PowerShell'
 $moduleDst   = Join-Path ([Environment]::GetFolderPath('MyDocuments')) `
-                   'WindowsPowerShell\Modules\PowerShell.Common'
+                   'WindowsPowerShell\Modules\Common.PowerShell'
 
 $srcVersion  = (Import-PowerShellDataFile `
-                    (Join-Path $moduleSrc 'PowerShell.Common.psd1')).ModuleVersion
-$dstManifest = Join-Path $moduleDst 'PowerShell.Common.psd1'
+                    (Join-Path $moduleSrc 'Common.PowerShell.psd1')).ModuleVersion
+$dstManifest = Join-Path $moduleDst 'Common.PowerShell.psd1'
 $dstVersion  = if (Test-Path $dstManifest) {
                    (Import-PowerShellDataFile $dstManifest).ModuleVersion
                } else { $null }
 
 if ($srcVersion -eq $dstVersion) {
-    Write-Host "PowerShell.Common v$srcVersion already installed - skipping." `
+    Write-Host "Common.PowerShell v$srcVersion already installed - skipping." `
         -ForegroundColor Green
     return
 }
 
-Write-Host "Installing PowerShell.Common v$srcVersion from source ..."
+Write-Host "Installing Common.PowerShell v$srcVersion from source ..."
 if (Test-Path $moduleDst) { Remove-Item $moduleDst -Recurse -Force }
 Copy-Item -Path $moduleSrc -Destination $moduleDst -Recurse
-Write-Host "PowerShell.Common v$srcVersion installed." -ForegroundColor Green
+Write-Host "Common.PowerShell v$srcVersion installed." -ForegroundColor Green

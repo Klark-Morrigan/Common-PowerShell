@@ -1,6 +1,6 @@
 <#
 .NOTES
-    Dot-sourced by PowerShell.Common.psm1. The public surface is
+    Dot-sourced by Common.PowerShell.psm1. The public surface is
     New-FileLockRetryStrategy; Test-FileLockException is a file-private
     helper kept alongside the factory so the classification policy lives
     next to its sole consumer.
