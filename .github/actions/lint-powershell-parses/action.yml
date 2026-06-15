@@ -1,0 +1,34 @@
+name: Lint - PowerShell parses
+description: >
+  Fails the build if any .ps1, .psm1 or .psd1 under source-root has a
+  PowerShell parse error. Wraps Test-PowerShellParses.ps1 so this gate
+  can be consumed via `uses:` from any downstream workflow, matching
+  the rest of the Common-PowerShell composite-action shape.
+
+inputs:
+  source-root:
+    description: >
+      Root directory of the repo under lint. Typically the
+      `github.workspace` value from the calling workflow. The
+      substitution-expression syntax is intentionally omitted here -
+      composite-action description strings are evaluated at manifest
+      load time, before the `github` context exists, so a literal
+      expression in the description would fail manifest validation
+      with `Unrecognized named-value: github`.
+    required: true
+  shell:
+    description: >
+      Shell to use: 'powershell' for PowerShell 5.1, 'pwsh' for
+      PowerShell 7. Defaults to pwsh to match the rest of the CI bar.
+    required: false
+    default: pwsh
+
+runs:
+  using: composite
+  steps:
+    - shell: ${{ inputs.shell }}
+      # ${{ github.action_path }} is the directory where the runner downloaded
+      # this action's files. Test-PowerShellParses.ps1 is co-located in
+      # that same directory.
+      run: |
+        & "${{ github.action_path }}/Test-PowerShellParses.ps1" -SourceRoot '${{ inputs.source-root }}'
