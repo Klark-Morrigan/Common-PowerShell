@@ -16,10 +16,14 @@ function Assert-ChangelogVersion {
         [string] $Changelog = 'CHANGELOG.md'
     )
 
-    $manifestVersion = (Import-PowerShellDataFile $Psd1).ModuleVersion
-    if (-not $manifestVersion) {
+    # Import-PowerShellDataFile returns a Hashtable; guard the key with
+    # ContainsKey so a manifest lacking ModuleVersion yields the friendly
+    # error below rather than a StrictMode 'property cannot be found' throw.
+    $manifest = Import-PowerShellDataFile $Psd1
+    if (-not $manifest.ContainsKey('ModuleVersion') -or -not $manifest.ModuleVersion) {
         throw "Assert-ChangelogVersion: no ModuleVersion found in manifest '$Psd1'."
     }
+    $manifestVersion = $manifest.ModuleVersion
 
     # First heading of the shape '## [X.Y.Z...]'. The digit anchor skips
     # '## [Unreleased]'; the first match is the most recent release.

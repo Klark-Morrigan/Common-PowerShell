@@ -8,7 +8,7 @@ Describe 'Assert-ChangelogVersion' {
 
         BeforeEach {
             Mock Import-PowerShellDataFile {
-                [PSCustomObject]@{ ModuleVersion = '8.1.0' }
+                @{ ModuleVersion = '8.1.0' }
             }
             Mock Get-Content {
                 '# Changelog', '', '## [Unreleased]', '',
@@ -38,7 +38,7 @@ Describe 'Assert-ChangelogVersion' {
 
         It 'throws naming both versions' {
             Mock Import-PowerShellDataFile {
-                [PSCustomObject]@{ ModuleVersion = '8.2.0' }
+                @{ ModuleVersion = '8.2.0' }
             }
             Mock Get-Content {
                 '## [Unreleased]', '## [8.1.0] - 2026-06-14'
@@ -53,7 +53,7 @@ Describe 'Assert-ChangelogVersion' {
 
         It 'throws' {
             Mock Import-PowerShellDataFile {
-                [PSCustomObject]@{ ModuleVersion = '8.1.0' }
+                @{ ModuleVersion = '8.1.0' }
             }
             Mock Get-Content { '# Changelog', '', '## [Unreleased]' }
 
@@ -65,7 +65,7 @@ Describe 'Assert-ChangelogVersion' {
     Context 'when the manifest has no ModuleVersion' {
 
         It 'throws' {
-            Mock Import-PowerShellDataFile { [PSCustomObject]@{ } }
+            Mock Import-PowerShellDataFile { @{ } }
             Mock Get-Content { '## [8.1.0] - 2026-06-14' }
 
             { Assert-ChangelogVersion -Psd1 'm.psd1' } |
