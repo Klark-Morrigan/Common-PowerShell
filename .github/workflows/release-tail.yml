@@ -1,0 +1,142 @@
+name: Release tail (tag, publish, GitHub release)
+
+# Reusable "back end" of the release pipeline, shared by Common-PowerShell
+# and every Infrastructure-* module repo. Callers run their own
+# version-check and tests first, then invoke this once to perform the
+# stack-agnostic tail: tag the manifest version, publish to PSGallery, and
+# cut a GitHub Release from the changelog. Folding the three former jobs
+# (tag / publish / release-notes) into one reusable workflow means a
+# consumer's release.yml shrinks to a single call and any future change to
+# the tail lands in one place instead of being copied per repo.
+#
+# The three steps run in one job on purpose: publish needs the tag and the
+# GitHub Release needs both, so they were already sequential. One job means
+# one checkout instead of three.
+#
+# Composite resolution mirrors tag.yml / publish.yml: every Common-PowerShell
+# composite is referenced by a local `./` path, never a fully-qualified
+# `@master` ref, so the source repo dogfoods its own working copy and the
+# eager-resolution failure mode (see ci-powershell.yml header) is avoided.
+# External consumers get a conditional sparse checkout of Common-PowerShell
+# into `.powershell-common/`; Common-Automation composites are always fetched
+# into `.common-automation/`.
+
+on:
+  workflow_call:
+    inputs:
+      psd1:
+        description: >
+          Path to the .psd1 manifest relative to the repo root
+          (e.g. Common.PowerShell\Common.PowerShell.psd1).
+        required: true
+        type: string
+      module-path:
+        description: >
+          Root directory to search for a .psd1 manifest when publishing.
+          Defaults to the repository root.
+        required: false
+        type: string
+        default: '.'
+      changelog:
+        description: >
+          Path to the changelog file used for the GitHub Release body. Set
+          to an empty string to skip cutting a GitHub Release (e.g. a repo
+          that does not yet keep a CHANGELOG.md).
+        required: false
+        type: string
+        default: CHANGELOG.md
+    secrets:
+      PSGALLERY_API_KEY:
+        required: true
+    outputs:
+      tag_created:
+        description: "'true' if a new tag was created, 'false' otherwise."
+        value: ${{ jobs.run.outputs.tag_created }}
+
+jobs:
+  run:
+    runs-on: windows-latest
+    # Tag push and GitHub Release both need write access to repo contents.
+    permissions:
+      contents: write
+    outputs:
+      tag_created: ${{ steps.gate.outputs.tag_created }}
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          # Full history so existing tags are visible to tag-from-manifest
+          # and the new tag is reachable by create-github-release.
+          fetch-depth: 0
+
+      - if: github.repository != 'VitaliiAndreev/Common-PowerShell'
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          repository: VitaliiAndreev/Common-PowerShell
+          ref: master
+          path: .powershell-common
+          sparse-checkout: .github/actions
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          repository: VitaliiAndreev/Common-Automation
+          ref: master
+          path: .common-automation
+          sparse-checkout: |
+            .github/actions
+            .github/lib
+          sparse-checkout-cone-mode: false
+
+      # --- Tag the manifest version ----------------------------------------
+      - id: tag-self
+        if: github.repository == 'VitaliiAndreev/Common-PowerShell'
+        uses: ./.github/actions/tag-from-manifest
+        with:
+          psd1: ${{ inputs.psd1 }}
+      - id: tag-consumer
+        if: github.repository != 'VitaliiAndreev/Common-PowerShell'
+        uses: ./.powershell-common/.github/actions/tag-from-manifest
+        with:
+          psd1: ${{ inputs.psd1 }}
+
+      # Collapse the self/consumer tag outputs into one value so the
+      # downstream guards do not have to repeat the OR. Publish and the
+      # GitHub Release only run when a brand new tag was just pushed.
+      - id: gate
+        shell: bash
+        env:
+          TAG_CREATED: >-
+            ${{ steps.tag-self.outputs.tag_created ||
+                steps.tag-consumer.outputs.tag_created }}
+        run: echo "tag_created=$TAG_CREATED" >> "$GITHUB_OUTPUT"
+
+      # --- Publish to PSGallery --------------------------------------------
+      - if: steps.gate.outputs.tag_created == 'true'
+        uses: ./.common-automation/.github/actions/assert-secret
+        with:
+          value: ${{ secrets.PSGALLERY_API_KEY }}
+          name: PSGALLERY_API_KEY
+      - if: >-
+          steps.gate.outputs.tag_created == 'true' &&
+          github.repository == 'VitaliiAndreev/Common-PowerShell'
+        uses: ./.github/actions/publish
+        with:
+          module-path: ${{ inputs.module-path }}
+          api-key: ${{ secrets.PSGALLERY_API_KEY }}
+      - if: >-
+          steps.gate.outputs.tag_created == 'true' &&
+          github.repository != 'VitaliiAndreev/Common-PowerShell'
+        uses: ./.powershell-common/.github/actions/publish
+        with:
+          module-path: ${{ inputs.module-path }}
+          api-key: ${{ secrets.PSGALLERY_API_KEY }}
+
+      # --- GitHub Release from the changelog -------------------------------
+      # version defaults to the top CHANGELOG.md section, which the caller's
+      # assert-changelog gate pinned to the manifest (== the tag just pushed).
+      # Skipped when changelog is empty so repos without a CHANGELOG.md can
+      # still reuse the tag + publish tail.
+      - if: steps.gate.outputs.tag_created == 'true' && inputs.changelog != ''
+        uses: ./.common-automation/.github/actions/create-github-release
+        with:
+          changelog: ${{ inputs.changelog }}
