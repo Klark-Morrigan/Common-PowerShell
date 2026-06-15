@@ -1,0 +1,29 @@
+name: Assert manifest and changelog versions match
+description: >
+  Fails if the ModuleVersion in the .psd1 manifest does not equal the latest
+  version section in CHANGELOG.md (the topmost '## [X.Y.Z]' heading, skipping
+  '[Unreleased]'). Use as a release gate before tagging, and on PRs, so the
+  package manifest and the changelog can never drift.
+
+inputs:
+  psd1:
+    description: >
+      Relative path to the .psd1 manifest inside the caller's repository
+      (e.g. 'Common.PowerShell\Common.PowerShell.psd1').
+    required: true
+  changelog:
+    description: Path to the changelog file (Keep a Changelog format).
+    required: false
+    default: CHANGELOG.md
+
+runs:
+  using: composite
+  steps:
+    - name: Assert manifest and changelog versions match
+      shell: pwsh
+      # github.action_path is the directory where the runner checked out this
+      # action's files - so the script resolves regardless of the caller's
+      # layout, mirroring tag-from-manifest.
+      run: |
+        . "${{ github.action_path }}\Assert-ChangelogVersion.ps1"
+        Assert-ChangelogVersion -Psd1 '${{ inputs.psd1 }}' -Changelog '${{ inputs.changelog }}'
