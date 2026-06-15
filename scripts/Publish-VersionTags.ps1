@@ -4,7 +4,7 @@
     this repo's composite actions and reusable workflows.
 
 .DESCRIPTION
-    Thin wrapper that delegates to GitHub-Common's publish-version-tags.sh,
+    Thin wrapper that delegates to Common-Automation's publish-version-tags.sh,
     which implements the GitHub Actions versioning convention (immutable
     semver tag + force-moved major tag, both placed on the resolved
     origin/master commit SHA - never the local checkout).
@@ -14,7 +14,7 @@
     bumped separately only when there are actual module changes. This
     keeps PSGallery free of versions that contain no PS code change.
 
-    GitHub-Common is located via the sibling assumption (..\GitHub-Common
+    Common-Automation is located via the sibling assumption (..\Common-Automation
     relative to this script's parent). Bash is invoked through Git for
     Windows - resolved by deriving <git-install>\bin\bash.exe from git.exe.
     Plain `bash.exe` on PATH is intentionally NOT preferred because on
@@ -38,12 +38,12 @@ $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot 'Find-GitBashExecutable.ps1')
 
-# Sibling layout: c:\a_Code\Common-PowerShell and c:\a_Code\GitHub-Common.
+# Sibling layout: c:\a_Code\Common-PowerShell and c:\a_Code\Common-Automation.
 # Two levels up from scripts\ to reach the shared repos root.
-$scriptPath = Join-Path $PSScriptRoot '..\..\GitHub-Common\scripts\publish-version-tags.sh'
+$scriptPath = Join-Path $PSScriptRoot '..\..\Common-Automation\scripts\publish-version-tags.sh'
 if (-not (Test-Path -LiteralPath $scriptPath)) {
     throw "Could not find publish-version-tags.sh at '$scriptPath'. " +
-          'Expected GitHub-Common as a sibling of Common-PowerShell.'
+          'Expected Common-Automation as a sibling of Common-PowerShell.'
 }
 # Resolve so bash sees an absolute, normalised path (forward slashes are
 # fine for Git Bash; backslashes also work, but resolving removes the ..).

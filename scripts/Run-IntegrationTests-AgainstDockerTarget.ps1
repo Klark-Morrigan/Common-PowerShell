@@ -3,7 +3,7 @@
     Runs SSH integration tests against a Docker target container.
 
 .DESCRIPTION
-    Builds the SSH test image from the Dockerfile in the GitHub-Common
+    Builds the SSH test image from the Dockerfile in the Common-Automation
     repo (resolved as a sibling checkout next to this repo, skipped when
     the image already exists locally), then runs every *.Tests.ps1 file
     found under Tests/Integration/ directly on the host.
@@ -40,12 +40,12 @@ $ErrorActionPreference = 'Stop'
 $Script:ImageName = 'infra-ssh-test-image'
 
 # Repo root is one level up now that this script lives under scripts\;
-# the shared repos root is one more level up from there. GitHub-Common is
+# the shared repos root is one more level up from there. Common-Automation is
 # checked out as a sibling of Common-PowerShell under that shared root.
 $Script:RepoRoot  = Split-Path -Parent $PSScriptRoot
 $Script:ReposRoot = Split-Path -Parent $Script:RepoRoot
 $Script:DockerfileDir = [IO.Path]::Combine(
-    $Script:ReposRoot, 'GitHub-Common',
+    $Script:ReposRoot, 'Common-Automation',
     '.github', 'actions', 'build-ssh-test-image')
 
 # ---------------------------------------------------------------------------
@@ -68,8 +68,8 @@ if ($existingImage) {
     Write-Host 'SSH test image already present - skipping build.' -ForegroundColor Cyan
 } else {
     if (-not (Test-Path $Script:DockerfileDir)) {
-        throw ("GitHub-Common Dockerfile not found at $Script:DockerfileDir. " +
-               'Expected GitHub-Common to be checked out as a sibling of this repo.')
+        throw ("Common-Automation Dockerfile not found at $Script:DockerfileDir. " +
+               'Expected Common-Automation to be checked out as a sibling of this repo.')
     }
     Write-Host 'Building SSH test image...' -ForegroundColor Cyan
     docker build -t $Script:ImageName $Script:DockerfileDir
