@@ -19,6 +19,7 @@
         'Invoke-ModuleInstall',
         'Limit-RetainedItem',
         # Retry loop (Public/Retry/)
+        'Invoke-WithExitCodeRetry',
         'Invoke-WithRetry',
         # Transient-error strategies (Public/Retry/TransientErrorStrategies/)
         'New-FileLockRetryStrategy',
@@ -32,4 +33,13 @@
     )
     CmdletsToExport   = @()
     AliasesToExport   = @()
+    # PSData surfaces the project/license links, search tags, and release
+    # notes on the PowerShell Gallery package page. Without it the gallery
+    # listing has no link back to the source repository.
+    PrivateData = @{
+        PSData = @{
+            ProjectUri   = 'https://github.com/VitaliiAndreev/Common-PowerShell'
+            LicenseUri   = 'https://github.com/VitaliiAndreev/Common-PowerShell/blob/master/LICENSE'
+        }
+    }
 }
