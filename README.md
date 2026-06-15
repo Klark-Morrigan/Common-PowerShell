@@ -560,6 +560,17 @@ sibling repos call them via `workflow_call` and `uses:` references to
 | `tag.yml` | Creates a git tag from the manifest version |
 | `publish.yml` | Publishes a module directory to PSGallery |
 
+This repo also *consumes* Common-Automation's reusable lint workflows for its
+own YAML and bash surfaces, the same way sibling repos consume the table above:
+
+| Consumer workflow | Delegates to (in `Common-Automation`) |
+|---|---|
+| `ci-yaml.yml` | `ci-yaml.yml` - actionlint, action-validator, yamllint, ansible-lint (each auto-skips when its surface is absent) |
+| `ci-bash.yml` | `ci-bash.yml` - shellcheck on the `scripts/` shims, check-sh-executable, bats |
+
+Run the same checks locally with `scripts/run-lint.sh` (Docker required; it
+shims to Common-Automation's engine so local and CI cannot drift).
+
 ---
 
 ## Repo structure
@@ -620,7 +631,9 @@ Common-PowerShell/
 |     |- ci-powershell-docker-target.yml
 |     |- tag.yml
 |     |- publish.yml
-|     `- release.yml
+|     |- release.yml
+|     |- ci-bash.yml                     #   Consumer wrapper -> Common-Automation ci-bash (shellchecks scripts\ shims)
+|     `- ci-yaml.yml                     #   Consumer wrapper -> Common-Automation ci-yaml (actionlint/yamllint/...)
 |- docs/
 |  `- dev/
 |     `- implementation/                # Per-feature problem.md + plan.md
@@ -629,8 +642,11 @@ Common-PowerShell/
 |  |- Publish.ps1            # Publishes to PSGallery (called by publish.yml)
 |  |- Publish-VersionTags.ps1 # Publishes GitHub Actions vX.Y.Z + rolling vX tags
 |  |- Find-GitBashExecutable.ps1     # Helper dot-sourced by Publish-VersionTags
-|  |- Run-Tests.ps1          # Runs unit tests locally (thin wrapper)
+|  |- Run-Tests.ps1          # Runs Pester unit tests locally (thin wrapper)
 |  |- Run-IntegrationTests-InDocker.ps1  # Integration tests in Docker
-|  `- Run-IntegrationTests-AgainstDockerTarget.ps1
+|  |- Run-IntegrationTests-AgainstDockerTarget.ps1
+|  |- run-lint.sh / .bat     # Local lint suite -> Common-Automation (yamllint/actionlint/action-validator/shellcheck)
+|  `- fix-permissions.sh / .bat  # Re-stages +x on tracked *.sh via the Common-Automation engine
+|- .gitattributes           # Pins *.sh -> LF, *.bat -> CRLF (Linux runners reject CRLF shebangs)
 `- README.md
 ```
