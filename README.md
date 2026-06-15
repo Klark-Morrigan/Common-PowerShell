@@ -171,12 +171,24 @@ streams may drift; they are not required to align.
 ### Shipping a module release (PSGallery)
 
 1. Bump `ModuleVersion` in [Common.PowerShell/Common.PowerShell.psd1](Common.PowerShell/Common.PowerShell.psd1)
-2. Open a PR, get it reviewed and merged
+2. Promote the `## [Unreleased]` section in [CHANGELOG.md](CHANGELOG.md) to
+   `## [X.Y.Z] - <date>` (matching the new version), open a fresh empty
+   `[Unreleased]` above it, and add the footer compare link
+3. Open a PR, get it reviewed and merged
 
-On merge, [.github/workflows/tag.yml](.github/workflows/tag.yml) runs both
-the unit and integration test workflows, creates a matching `X.Y.Z` git
-tag, then calls [.github/workflows/publish.yml](.github/workflows/publish.yml)
-to publish to PSGallery. No manual tagging step required.
+On merge, [.github/workflows/release.yml](.github/workflows/release.yml)
+checks the version is new, **asserts the manifest and changelog agree on
+`X.Y.Z`** (the `assert-changelog-version` action - the release fails here if
+you forgot to promote the changelog), runs the unit + integration tests, and
+creates a matching `X.Y.Z` git tag. It then, in parallel, publishes to
+PSGallery and creates a **GitHub Release** whose body is the `X.Y.Z`
+CHANGELOG.md section (Common-Automation's `create-github-release`). No manual
+tagging or release-notes step required.
+
+Add entries under `[Unreleased]` as you merge feature work, so step 2 at
+release time is only the rename. GitHub Releases attach to this module
+(`X.Y.Z`) stream; the `vN` actions stream below stays release-free - those
+tags are ref pins, not published artifacts.
 
 **One-time setup:** add your PSGallery API key as a repository secret named
 `PSGALLERY_API_KEY` under Settings -> Secrets and variables -> Actions.

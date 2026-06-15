@@ -40,6 +40,7 @@
         PSData = @{
             ProjectUri   = 'https://github.com/VitaliiAndreev/Common-PowerShell'
             LicenseUri   = 'https://github.com/VitaliiAndreev/Common-PowerShell/blob/master/LICENSE'
+            ReleaseNotes = 'https://github.com/VitaliiAndreev/Common-PowerShell/releases'
         }
     }
 }
