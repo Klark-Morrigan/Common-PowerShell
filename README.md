@@ -17,6 +17,7 @@ Shared PowerShell functions and reusable PowerShell centric GitHub composite act
     - [Invoke-ModuleInstall](#invoke-moduleinstall)
   - Retry (`Public/Retry/`)
     - Loop
+      - [Invoke-WithExitCodeRetry](#invoke-withexitcoderetry)
       - [Invoke-WithRetry](#invoke-withretry)
     - Transient-error strategies (`Public/Retry/TransientErrorStrategies/`)
       - [New-TransientNetworkRetryStrategy](#new-transientnetworkretrystrategy)
@@ -58,6 +59,12 @@ are grouped on disk by concern; the retry family lives under
 folder stays small as more factories land:
 
 - *Loop (root of `Public/Retry/`)*
+  - **`Invoke-WithExitCodeRetry`** - exit-code counterpart for native
+    commands (`netsh`, `git`, `docker`, `wsl`, ...) that fail via
+    `$LASTEXITCODE` rather than a thrown exception. Reuses the same backoff
+    strategies; retries any non-zero exit by default, or only a
+    caller-supplied `-RetryableExitCode` set. For predicate-based
+    classification, throw and use `Invoke-WithRetry` instead.
   - **`Invoke-WithRetry`** - generic retry loop. Consumes hashtable-shaped
     retry strategies (`ShouldRetry` classifiers) and a backoff strategy
     (`GetDelay` provider). Multiple retry strategies are OR-composed so a
@@ -164,12 +171,24 @@ streams may drift; they are not required to align.
 ### Shipping a module release (PSGallery)
 
 1. Bump `ModuleVersion` in [Common.PowerShell/Common.PowerShell.psd1](Common.PowerShell/Common.PowerShell.psd1)
-2. Open a PR, get it reviewed and merged
+2. Promote the `## [Unreleased]` section in [CHANGELOG.md](CHANGELOG.md) to
+   `## [X.Y.Z] - <date>` (matching the new version), open a fresh empty
+   `[Unreleased]` above it, and add the footer compare link
+3. Open a PR, get it reviewed and merged
 
-On merge, [.github/workflows/tag.yml](.github/workflows/tag.yml) runs both
-the unit and integration test workflows, creates a matching `X.Y.Z` git
-tag, then calls [.github/workflows/publish.yml](.github/workflows/publish.yml)
-to publish to PSGallery. No manual tagging step required.
+On merge, [.github/workflows/release.yml](.github/workflows/release.yml)
+checks the version is new, **asserts the manifest and changelog agree on
+`X.Y.Z`** (the `assert-changelog-version` action - the release fails here if
+you forgot to promote the changelog), runs the unit + integration tests, and
+creates a matching `X.Y.Z` git tag. It then, in parallel, publishes to
+PSGallery and creates a **GitHub Release** whose body is the `X.Y.Z`
+CHANGELOG.md section (Common-Automation's `create-github-release`). No manual
+tagging or release-notes step required.
+
+Add entries under `[Unreleased]` as you merge feature work, so step 2 at
+release time is only the rename. GitHub Releases attach to this module
+(`X.Y.Z`) stream; the `vN` actions stream below stays release-free - those
+tags are ref pins, not published artifacts.
 
 **One-time setup:** add your PSGallery API key as a repository secret named
 `PSGALLERY_API_KEY` under Settings -> Secrets and variables -> Actions.
@@ -266,6 +285,47 @@ Invoke-ModuleInstall -ModuleName 'Posh-SSH'
 ### Retry (`Public/Retry/`)
 
 #### Loop
+
+### `Invoke-WithExitCodeRetry`
+
+Exit-code counterpart to `Invoke-WithRetry`. Native commands (`netsh`,
+`git`, `docker`, `wsl`, ...) signal failure through `$LASTEXITCODE`, not
+exceptions, so `Invoke-WithRetry`'s `ShouldRetry` predicates cannot
+classify them. This loop reads `$LASTEXITCODE` after each attempt and
+reuses the same backoff strategies.
+
+Contract: the script block's final statement must be the native command
+whose exit code matters - `$LASTEXITCODE` is read immediately after the
+block returns. Thrown exceptions are not retried here; use
+`Invoke-WithRetry` for exception-classified retry.
+
+Retriability is intentionally limited to a data-driven exit-code set
+(`-RetryableExitCode`), keeping the function true to "retry on the exit
+code". For anything a set cannot express - "retry all except these
+permanent codes", ranges, classifying on stderr - throw inside the
+script block and use `Invoke-WithRetry`, whose `ShouldRetry` strategies
+are the home for predicate-based classification.
+
+| Parameter            | Type        | Required | Description                                                                                                                |
+|----------------------|-------------|----------|----------------------------------------------------------------------------------------------------------------------------|
+| `-ScriptBlock`       | scriptblock | Yes      | The work to attempt. Its pipeline output is the return value on success (exit 0).                                          |
+| `-BackoffStrategy`   | hashtable   | No       | A `@{ Name; GetDelay }` strategy. `GetDelay` receives `(attempt, $null)` - exit-code failures carry no `ErrorRecord`, so the same strategies that pair with `Invoke-WithRetry` work unchanged. Defaults to `New-ExponentialBackoffStrategy`. |
+| `-MaxAttempts`       | int         | No       | Total attempts including the first. Defaults to `3`. Pass `1` to disable retry.                                            |
+| `-RetryableExitCode` | int[]       | No       | Exit codes that count as retryable. Empty (default) means any non-zero. Pass a set to retry only those, fail fast on the rest. |
+| `-OperationName`     | string      | No       | Label surfaced in the per-retry warning and failure message. Defaults to `native command`.                                |
+
+```powershell
+# Refresh a netsh portproxy rule, absorbing a transient iphlpsvc hiccup.
+Invoke-WithExitCodeRetry `
+    -OperationName 'netsh portproxy add' `
+    -ScriptBlock {
+        & netsh interface portproxy add v4tov4 `
+            listenaddress=0.0.0.0 listenport=2222 `
+            connectaddress=192.168.137.10 connectport=22 | Out-Null
+    }
+```
+
+---
 
 ### `Invoke-WithRetry`
 

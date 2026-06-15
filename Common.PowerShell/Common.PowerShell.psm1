@@ -16,6 +16,10 @@
     - Limit-RetainedItem: prunes items in a directory by age and/or count
       (no Windows logrotate equivalent; callers use this for at-write-time
       retention sweeps on log / diag folders).
+    - Invoke-WithExitCodeRetry: exit-code counterpart to Invoke-WithRetry
+      for native commands (netsh, git, docker, wsl, ...) that fail via
+      $LASTEXITCODE rather than a thrown exception. Reuses the same backoff
+      strategies.
     - Invoke-WithRetry: generic retry loop that consumes hashtable-shaped
       retry (ShouldRetry) and backoff (GetDelay) strategies. The classifier
       and pacing are caller-supplied; the loop just orchestrates.
@@ -68,6 +72,7 @@ $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot\Public\Retry\BackoffStrategies\New-CustomBackoffStrategy.ps1"
 . "$PSScriptRoot\Public\Retry\BackoffStrategies\New-ExponentialBackoffStrategy.ps1"
 . "$PSScriptRoot\Public\Retry\BackoffStrategies\New-LinearBackoffStrategy.ps1"
+. "$PSScriptRoot\Public\Retry\Invoke-WithExitCodeRetry.ps1"
 . "$PSScriptRoot\Public\Retry\Invoke-WithRetry.ps1"
 
 # Export-ModuleMember controls what is actually callable after Import-Module.
@@ -82,6 +87,7 @@ Export-ModuleMember -Function `
     Invoke-ModuleInstall, `
     Limit-RetainedItem, `
     `
+    Invoke-WithExitCodeRetry, `
     Invoke-WithRetry, `
     New-FileLockRetryStrategy, `
     New-TransientPowerShellModuleInstallRetryStrategy, `

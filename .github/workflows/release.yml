@@ -23,6 +23,15 @@ jobs:
         with:
           psd1: 'Common.PowerShell\Common.PowerShell.psd1'
 
+      # Gate the release on the manifest and changelog agreeing. A new
+      # version that has not been promoted in CHANGELOG.md fails here, before
+      # any tag or publish, so notes can never lag the release.
+      - if: steps.check.outputs.version_is_new == 'true'
+        uses: ./.github/actions/assert-changelog-version
+        with:
+          psd1: 'Common.PowerShell\Common.PowerShell.psd1'
+          changelog: CHANGELOG.md
+
   test-unit:
     needs: check-version
     if: needs.check-version.outputs.version_is_new == 'true'
@@ -55,3 +64,33 @@ jobs:
       module-path: Common.PowerShell
     secrets:
       PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
+
+  # GitHub Release with the CHANGELOG.md section as the body. The module
+  # (X.Y.Z) artifact stream gets a Release; the vN actions stream does not.
+  # The generic create-github-release composite lives in Common-Automation,
+  # fetched here the same way publish.yml fetches its shared composites.
+  release-notes:
+    needs: tag
+    if: needs.tag.outputs.tag_created == 'true'
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          repository: VitaliiAndreev/Common-Automation
+          ref: master
+          path: .common-automation
+          sparse-checkout: |
+            .github/actions
+            .github/lib
+          sparse-checkout-cone-mode: false
+      # version defaults to the top CHANGELOG.md section, which the
+      # assert-changelog gate pinned to the manifest (== the tag just pushed).
+      # GH_TOKEN defaults to github.token via the action's token input.
+      - uses: ./.common-automation/.github/actions/create-github-release
+        with:
+          changelog: CHANGELOG.md

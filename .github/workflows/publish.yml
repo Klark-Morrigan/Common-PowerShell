@@ -3,7 +3,7 @@ name: Publish to PSGallery
 # Reusable workflow - called from release.yml after the tag is created.
 #
 # Every `uses:` for an external composite is a local `./` path; the
-# composites are fetched into `.powershell-common/` / `.github-common/` via
+# composites are fetched into `.powershell-common/` / `.common-automation/` via
 # conditional / unconditional sparse checkouts. See ci-powershell.yml
 # header for the eager-resolution rationale.
 on:
@@ -46,15 +46,15 @@ jobs:
 
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
-          repository: VitaliiAndreev/GitHub-Common
+          repository: VitaliiAndreev/Common-Automation
           ref: master
-          path: .github-common
+          path: .common-automation
           sparse-checkout: |
             .github/actions
             .github/lib
           sparse-checkout-cone-mode: false
 
-      - uses: ./.github-common/.github/actions/assert-secret
+      - uses: ./.common-automation/.github/actions/assert-secret
         with:
           value: ${{ secrets.PSGALLERY_API_KEY }}
           name: PSGALLERY_API_KEY

@@ -15,8 +15,8 @@ name: CI (Docker target)
 # (see ci-powershell.yml header for the eager-resolution rationale).
 # External consumers get a conditional sparse checkout of
 # Common-PowerShell at master into `.powershell-common/`. The
-# build-ssh-test-image composite lives in GitHub-Common, so the same
-# pattern fetches GitHub-Common unconditionally into `.github-common/`.
+# build-ssh-test-image composite lives in Common-Automation, so the same
+# pattern fetches Common-Automation unconditionally into `.common-automation/`.
 
 on:
   pull_request:
@@ -48,9 +48,9 @@ jobs:
 
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
-          repository: VitaliiAndreev/GitHub-Common
+          repository: VitaliiAndreev/Common-Automation
           ref: master
-          path: .github-common
+          path: .common-automation
           sparse-checkout: |
             .github/actions
             .github/lib
@@ -72,7 +72,7 @@ jobs:
 
       - name: Build SSH test image
         if: ${{ steps.scan-self.outputs.has-tests == 'true' || steps.scan-consumer.outputs.has-tests == 'true' }}
-        uses: ./.github-common/.github/actions/build-ssh-test-image
+        uses: ./.common-automation/.github/actions/build-ssh-test-image
 
       - name: Run SSH integration tests (self)
         if: ${{ steps.scan-self.outputs.has-tests == 'true' }}

@@ -1,5 +1,5 @@
 @{
-    ModuleVersion        = '8.0.0'
+    ModuleVersion        = '8.1.0'
     GUID                 = 'b7d3f2a1-4c9e-4f8d-a2b5-3e6d7f8a9b0c'
     Author               = 'Vitaly Andrev'
     Description          = 'Shared PowerShell functions.'
@@ -19,6 +19,7 @@
         'Invoke-ModuleInstall',
         'Limit-RetainedItem',
         # Retry loop (Public/Retry/)
+        'Invoke-WithExitCodeRetry',
         'Invoke-WithRetry',
         # Transient-error strategies (Public/Retry/TransientErrorStrategies/)
         'New-FileLockRetryStrategy',
@@ -32,4 +33,14 @@
     )
     CmdletsToExport   = @()
     AliasesToExport   = @()
+    # PSData surfaces the project/license links, search tags, and release
+    # notes on the PowerShell Gallery package page. Without it the gallery
+    # listing has no link back to the source repository.
+    PrivateData = @{
+        PSData = @{
+            ProjectUri   = 'https://github.com/VitaliiAndreev/Common-PowerShell'
+            LicenseUri   = 'https://github.com/VitaliiAndreev/Common-PowerShell/blob/master/LICENSE'
+            ReleaseNotes = 'https://github.com/VitaliiAndreev/Common-PowerShell/releases'
+        }
+    }
 }
