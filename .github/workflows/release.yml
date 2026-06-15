@@ -47,50 +47,19 @@ jobs:
     if: needs.check-version.outputs.version_is_new == 'true'
     uses: ./.github/workflows/ci-powershell-docker-target.yml
 
-  tag:
+  # Tag, publish to PSGallery, and cut the GitHub Release. The module
+  # (X.Y.Z) artifact stream gets a Release; the vN actions stream does not.
+  # All three steps live in the shared release-tail workflow so consumers
+  # reuse exactly this back end - see release-tail.yml.
+  release-tail:
     needs: [ check-version, test-unit, test-integration-host, test-integration-target ]
     if: needs.check-version.outputs.version_is_new == 'true'
     permissions:
       contents: write
-    uses: ./.github/workflows/tag.yml
+    uses: ./.github/workflows/release-tail.yml
     with:
       psd1: 'Common.PowerShell\Common.PowerShell.psd1'
-
-  publish:
-    needs: tag
-    if: needs.tag.outputs.tag_created == 'true'
-    uses: ./.github/workflows/publish.yml
-    with:
       module-path: Common.PowerShell
+      changelog: CHANGELOG.md
     secrets:
       PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
-
-  # GitHub Release with the CHANGELOG.md section as the body. The module
-  # (X.Y.Z) artifact stream gets a Release; the vN actions stream does not.
-  # The generic create-github-release composite lives in Common-Automation,
-  # fetched here the same way publish.yml fetches its shared composites.
-  release-notes:
-    needs: tag
-    if: needs.tag.outputs.tag_created == 'true'
-    runs-on: windows-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-        with:
-          fetch-depth: 0
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-        with:
-          repository: VitaliiAndreev/Common-Automation
-          ref: master
-          path: .common-automation
-          sparse-checkout: |
-            .github/actions
-            .github/lib
-          sparse-checkout-cone-mode: false
-      # version defaults to the top CHANGELOG.md section, which the
-      # assert-changelog gate pinned to the manifest (== the tag just pushed).
-      # GH_TOKEN defaults to github.token via the action's token input.
-      - uses: ./.common-automation/.github/actions/create-github-release
-        with:
-          changelog: CHANGELOG.md
