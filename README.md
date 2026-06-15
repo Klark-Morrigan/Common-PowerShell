@@ -607,6 +607,7 @@ Common-PowerShell/
 |  |- Limit-TestLogRetention.Tests.ps1  # run-unit-tests\lib helper (+ .IntegrationTests)
 |  |- Run-IntegrationTests.Tests.ps1
 |  |- Test-NoBareReturnEmptyArray.Tests.ps1
+|  |- Test-PowerShellParses.Tests.ps1   # Syntax-gate lint helper tests
 |  `- Integration.DockerHost/           # Integration tests - run in Docker only
 |- .github/
 |  |- actions/                          # Reusable composite actions (canonical)
@@ -623,7 +624,8 @@ Common-PowerShell/
 |  |  |- run-integration-tests/
 |  |  |- run-ssh-integration-tests/
 |  |  |- scan-integration-tests/
-|  |  |- lint-no-bare-return-empty-array/  # Lint script invoked by ci-powershell.yml
+|  |  |- lint-no-bare-return-empty-array/  # Regex lint: bans bare `return @()` (invoked by ci-powershell.yml)
+|  |  |- lint-powershell-parses/            # Syntax gate: parses every .ps1/.psm1/.psd1 via the PS parser
 |  |  `- publish/
 |  `- workflows/                        # Reusable workflows (canonical)
 |     |- ci-powershell.yml
