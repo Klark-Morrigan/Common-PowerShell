@@ -568,8 +568,17 @@ own YAML and bash surfaces, the same way sibling repos consume the table above:
 | `ci-yaml.yml` | `ci-yaml.yml` - actionlint, action-validator, yamllint, ansible-lint (each auto-skips when its surface is absent) |
 | `ci-bash.yml` | `ci-bash.yml` - shellcheck on the `scripts/` shims, check-sh-executable, bats |
 
-Run the same checks locally with `scripts/run-lint.sh` (Docker required; it
-shims to Common-Automation's engine so local and CI cannot drift).
+Run the same checks locally via three sibling shims (Docker required; each shims to
+Common-Automation's engine - pointed at this repo through
+`COMMON_AUTOMATION_TARGET_REPO` - so local and CI cannot drift). `Common-Automation`
+must be a sibling checkout (`..\Common-Automation`):
+
+- `scripts/run-ci-yaml-and-bash.sh` (+ `.bat`) - PRIMARY local entry: runs the full
+  lint suite AND the bats tests (local equivalent of this repo's `ci-yaml.yml` +
+  `ci-bash.yml`).
+- `scripts/run-lint-yaml-and-bash.sh` (+ `.bat`) - run a single half: the LINT half
+  only (shellcheck, actionlint, action-validator, yamllint, ansible-lint).
+- `scripts/run-tests-bash.sh` (+ `.bat`) - run a single half: the bats TEST half only.
 
 ---
 
@@ -647,7 +656,9 @@ Common-PowerShell/
 |  |- Run-Tests.ps1          # Runs Pester unit tests locally (thin wrapper)
 |  |- Run-IntegrationTests-InDocker.ps1  # Integration tests in Docker
 |  |- Run-IntegrationTests-AgainstDockerTarget.ps1
-|  |- run-lint.sh / .bat     # Local lint suite -> Common-Automation (yamllint/actionlint/action-validator/shellcheck)
+|  |- run-ci-yaml-and-bash.sh / .bat     # PRIMARY local entry: full lint suite + bats tests -> Common-Automation
+|  |- run-lint-yaml-and-bash.sh / .bat   # Lint half only (shellcheck/actionlint/action-validator/yamllint/ansible-lint)
+|  |- run-tests-bash.sh / .bat           # Bats test half only -> Common-Automation
 |  `- fix-permissions.sh / .bat  # Re-stages +x on tracked *.sh via the Common-Automation engine
 |- .gitattributes           # Pins *.sh -> LF, *.bat -> CRLF (Linux runners reject CRLF shebangs)
 `- README.md
