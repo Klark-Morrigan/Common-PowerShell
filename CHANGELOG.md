@@ -12,6 +12,18 @@ history and the tag list.
 
 ## [Unreleased]
 
+## [9.0.1] - 2026-06-17
+
+### Fixed
+- `Invoke-ModuleInstall` now imports the target module with `-Global`. Because
+  the function is itself a module export, a plain `Import-Module` placed the
+  installed module's commands in this module's session state rather than the
+  caller's, so callers silently relied on command auto-loading. When two
+  installed modules export the same command (e.g. a renamed/split module
+  leaves an old copy behind), auto-load resolved to the alphabetically-first
+  one - which could be the stale version. `-Global` makes the explicit import
+  authoritative in the caller's scope, so resolution is deterministic.
+
 ## [9.0.0] - 2026-06-17
 
 ### Changed
@@ -27,6 +39,7 @@ history and the tag list.
   `-RetryableExitCode` set, or throw and use `Invoke-WithRetry` for
   predicate-based classification.
 
-[Unreleased]: https://github.com/Klark-Morrigan/Common-PowerShell/compare/9.0.0...HEAD
+[Unreleased]: https://github.com/Klark-Morrigan/Common-PowerShell/compare/9.0.1...HEAD
+[9.0.1]: https://github.com/Klark-Morrigan/Common-PowerShell/compare/9.0.0...9.0.1
 [9.0.0]: https://github.com/Klark-Morrigan/Common-PowerShell/compare/8.1.0...9.0.0
 [8.1.0]: https://github.com/Klark-Morrigan/Common-PowerShell/compare/8.0.0...8.1.0
