@@ -171,6 +171,19 @@ function Invoke-ModuleInstall {
                       $loaded[0].Version -eq $targetVersion
     if (-not $alreadyCorrect) {
         if ($loaded) { $loaded | Remove-Module -Force }
-        Import-Module $ModuleName -Force -ErrorAction Stop
+        # -Global is load-bearing, not cosmetic. Invoke-ModuleInstall is
+        # itself a function exported by this module, so a plain Import-Module
+        # would import the target's commands into THIS module's session
+        # state, not the caller's. The caller (a script or another module)
+        # would then never see them via the explicit import and would fall
+        # back to PowerShell's command auto-loading on first use. Auto-load
+        # is harmless when exactly one installed module exports a command,
+        # but when two do (e.g. a renamed/split module leaves an old copy
+        # behind that still exports the same name) it silently resolves to
+        # the alphabetically-first one - which may be the stale version.
+        # -Global puts the freshly installed module in the caller's scope so
+        # the explicit import is authoritative and command resolution is
+        # deterministic regardless of any leftover duplicate exporters.
+        Import-Module $ModuleName -Force -Global -ErrorAction Stop
     }
 }
