@@ -44,10 +44,10 @@ jobs:
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
 
-      - if: github.repository != 'VitaliiAndreev/Common-PowerShell'
+      - if: github.repository != 'Klark-Morrigan/Common-PowerShell'
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
-          repository: VitaliiAndreev/Common-PowerShell
+          repository: Klark-Morrigan/Common-PowerShell
           ref: master
           path: .powershell-common
           sparse-checkout: .github/actions
@@ -71,30 +71,30 @@ jobs:
       # caught only on the next PR. Fast feedback is preferred over closing
       # that narrow window. The parse gate does not carry the same risk: it
       # delegates to the platform parser, so its custom surface is tiny.
-      - if: github.repository == 'VitaliiAndreev/Common-PowerShell'
+      - if: github.repository == 'Klark-Morrigan/Common-PowerShell'
         uses: ./.github/actions/lint-powershell-parses
         with:
           source-root: ${{ github.workspace }}
 
-      - if: github.repository != 'VitaliiAndreev/Common-PowerShell'
+      - if: github.repository != 'Klark-Morrigan/Common-PowerShell'
         uses: ./.powershell-common/.github/actions/lint-powershell-parses
         with:
           source-root: ${{ github.workspace }}
 
-      - if: github.repository == 'VitaliiAndreev/Common-PowerShell'
+      - if: github.repository == 'Klark-Morrigan/Common-PowerShell'
         uses: ./.github/actions/lint-no-bare-return-empty-array
         with:
           source-root: ${{ github.workspace }}
 
-      - if: github.repository != 'VitaliiAndreev/Common-PowerShell'
+      - if: github.repository != 'Klark-Morrigan/Common-PowerShell'
         uses: ./.powershell-common/.github/actions/lint-no-bare-return-empty-array
         with:
           source-root: ${{ github.workspace }}
 
-      - if: github.repository == 'VitaliiAndreev/Common-PowerShell'
+      - if: github.repository == 'Klark-Morrigan/Common-PowerShell'
         uses: ./.github/actions/run-unit-tests
 
-      - if: github.repository != 'VitaliiAndreev/Common-PowerShell'
+      - if: github.repository != 'Klark-Morrigan/Common-PowerShell'
         uses: ./.powershell-common/.github/actions/run-unit-tests
 
       - name: Upload test results

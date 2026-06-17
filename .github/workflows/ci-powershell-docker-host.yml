@@ -46,10 +46,10 @@ jobs:
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
 
-      - if: github.repository != 'VitaliiAndreev/Common-PowerShell'
+      - if: github.repository != 'Klark-Morrigan/Common-PowerShell'
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
-          repository: VitaliiAndreev/Common-PowerShell
+          repository: Klark-Morrigan/Common-PowerShell
           ref: master
           path: .powershell-common
           sparse-checkout: .github/actions
@@ -60,7 +60,7 @@ jobs:
       # the outputs from whichever scan branch fired.
       - name: Scan for integration tests (self)
         id: scan-self
-        if: ${{ github.repository == 'VitaliiAndreev/Common-PowerShell' }}
+        if: ${{ github.repository == 'Klark-Morrigan/Common-PowerShell' }}
         uses: ./.github/actions/scan-integration-tests
         with:
           test-dir: Tests/Integration.DockerHost
@@ -68,7 +68,7 @@ jobs:
 
       - name: Scan for integration tests (consumer)
         id: scan-consumer
-        if: ${{ github.repository != 'VitaliiAndreev/Common-PowerShell' }}
+        if: ${{ github.repository != 'Klark-Morrigan/Common-PowerShell' }}
         uses: ./.powershell-common/.github/actions/scan-integration-tests
         with:
           test-dir: Tests/Integration.DockerHost

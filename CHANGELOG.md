@@ -22,5 +22,5 @@ history and the tag list.
   `-RetryableExitCode` set, or throw and use `Invoke-WithRetry` for
   predicate-based classification.
 
-[Unreleased]: https://github.com/VitaliiAndreev/Common-PowerShell/compare/8.1.0...HEAD
-[8.1.0]: https://github.com/VitaliiAndreev/Common-PowerShell/compare/8.0.0...8.1.0
+[Unreleased]: https://github.com/Klark-Morrigan/Common-PowerShell/compare/8.1.0...HEAD
+[8.1.0]: https://github.com/Klark-Morrigan/Common-PowerShell/compare/8.0.0...8.1.0

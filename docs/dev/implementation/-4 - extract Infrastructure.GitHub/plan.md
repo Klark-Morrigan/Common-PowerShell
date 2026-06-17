@@ -51,17 +51,17 @@ The three CI workflows are thin callers of Common's reusable workflows
 # ci.yml
 jobs:
   ci:
-    uses: VitaliiAndreev/Common-PowerShell/.github/workflows/ci-powershell.yml@master
+    uses: Klark-Morrigan/Common-PowerShell/.github/workflows/ci-powershell.yml@master
 
 # ci-docker-host.yml
 jobs:
   ci:
-    uses: VitaliiAndreev/Common-PowerShell/.github/workflows/ci-powershell-docker-host.yml@master
+    uses: Klark-Morrigan/Common-PowerShell/.github/workflows/ci-powershell-docker-host.yml@master
 
 # ci-docker-target.yml
 jobs:
   ci:
-    uses: VitaliiAndreev/Common-PowerShell/.github/workflows/ci-powershell-docker-target.yml@master
+    uses: Klark-Morrigan/Common-PowerShell/.github/workflows/ci-powershell-docker-target.yml@master
 ```
 
 `release.yml` follows Secrets' `release.yml` pattern exactly, with two
@@ -74,12 +74,12 @@ directly - no local copies:
 
 ```yaml
 tag:
-  uses: VitaliiAndreev/Common-PowerShell/.github/workflows/tag.yml@master
+  uses: Klark-Morrigan/Common-PowerShell/.github/workflows/tag.yml@master
   with:
     psd1: 'Infrastructure.GitHub\Infrastructure.GitHub.psd1'
 
 publish:
-  uses: VitaliiAndreev/Common-PowerShell/.github/workflows/publish.yml@master
+  uses: Klark-Morrigan/Common-PowerShell/.github/workflows/publish.yml@master
   with:
     module-path: Infrastructure.GitHub
   secrets:

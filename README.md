@@ -162,7 +162,7 @@ but not the version numbering. Each has its own release flow.
 | Stream | Tag shape | Driven by | Consumed by |
 |---|---|---|---|
 | Module | `X.Y.Z` (e.g. `6.0.0`) | Automated: `tag-from-manifest` on `.psd1` bump | `Install-Module Common.PowerShell` from PSGallery |
-| Actions | `vX.Y.Z` + rolling `vX` (e.g. `v7.0.0`, `v7`) | Manual: [scripts/Publish-VersionTags.ps1](scripts/Publish-VersionTags.ps1) | Other repos pinning `uses: VitaliiAndreev/Common-PowerShell/.github/.../<name>@vN` |
+| Actions | `vX.Y.Z` + rolling `vX` (e.g. `v7.0.0`, `v7`) | Manual: [scripts/Publish-VersionTags.ps1](scripts/Publish-VersionTags.ps1) | Other repos pinning `uses: Klark-Morrigan/Common-PowerShell/.github/.../<name>@vN` |
 
 The two namespaces never collide (`7.0.0` and `v7.0.0` are different tag
 names), so each stream can advance on its own cadence. Numbers across
