@@ -1,7 +1,7 @@
 @{
-    ModuleVersion        = '8.1.0'
+    ModuleVersion        = '9.0.0'
     GUID                 = 'b7d3f2a1-4c9e-4f8d-a2b5-3e6d7f8a9b0c'
-    Author               = 'Vitaly Andrev'
+    Author               = 'Klark Morrigan'
     Description          = 'Shared PowerShell functions.'
     PowerShellVersion    = '7.0'
     CompatiblePSEditions = @('Core')
@@ -38,9 +38,9 @@
     # listing has no link back to the source repository.
     PrivateData = @{
         PSData = @{
-            ProjectUri   = 'https://github.com/VitaliiAndreev/Common-PowerShell'
-            LicenseUri   = 'https://github.com/VitaliiAndreev/Common-PowerShell/blob/master/LICENSE'
-            ReleaseNotes = 'https://github.com/VitaliiAndreev/Common-PowerShell/releases'
+            ProjectUri   = 'https://github.com/Klark-Morrigan/Common-PowerShell'
+            LicenseUri   = 'https://github.com/Klark-Morrigan/Common-PowerShell/blob/master/LICENSE'
+            ReleaseNotes = 'https://github.com/Klark-Morrigan/Common-PowerShell/releases'
         }
     }
 }

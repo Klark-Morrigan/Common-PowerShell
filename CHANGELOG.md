@@ -12,6 +12,11 @@ history and the tag list.
 
 ## [Unreleased]
 
+## [9.0.0] - 2026-06-17
+
+### Changed
+- Major version bump; no functional changes (version realignment).
+
 ## [8.1.0] - 2026-06-14
 
 ### Added
@@ -22,5 +27,6 @@ history and the tag list.
   `-RetryableExitCode` set, or throw and use `Invoke-WithRetry` for
   predicate-based classification.
 
-[Unreleased]: https://github.com/VitaliiAndreev/Common-PowerShell/compare/8.1.0...HEAD
-[8.1.0]: https://github.com/VitaliiAndreev/Common-PowerShell/compare/8.0.0...8.1.0
+[Unreleased]: https://github.com/Klark-Morrigan/Common-PowerShell/compare/9.0.0...HEAD
+[9.0.0]: https://github.com/Klark-Morrigan/Common-PowerShell/compare/8.1.0...9.0.0
+[8.1.0]: https://github.com/Klark-Morrigan/Common-PowerShell/compare/8.0.0...8.1.0

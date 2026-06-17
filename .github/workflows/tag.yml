@@ -36,23 +36,23 @@ jobs:
         with:
           fetch-depth: 0
 
-      - if: github.repository != 'VitaliiAndreev/Common-PowerShell'
+      - if: github.repository != 'Klark-Morrigan/Common-PowerShell'
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
-          repository: VitaliiAndreev/Common-PowerShell
+          repository: Klark-Morrigan/Common-PowerShell
           ref: master
           path: .powershell-common
           sparse-checkout: .github/actions
           sparse-checkout-cone-mode: false
 
       - id: tag-self
-        if: github.repository == 'VitaliiAndreev/Common-PowerShell'
+        if: github.repository == 'Klark-Morrigan/Common-PowerShell'
         uses: ./.github/actions/tag-from-manifest
         with:
           psd1: ${{ inputs.psd1 }}
 
       - id: tag-consumer
-        if: github.repository != 'VitaliiAndreev/Common-PowerShell'
+        if: github.repository != 'Klark-Morrigan/Common-PowerShell'
         uses: ./.powershell-common/.github/actions/tag-from-manifest
         with:
           psd1: ${{ inputs.psd1 }}

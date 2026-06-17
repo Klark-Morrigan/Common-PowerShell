@@ -238,7 +238,7 @@ reference rather than to `@master`.
 **Tests:**
 - `git show <tag>` resolves and contains the action directory.
 - Local dry-run: a scratch workflow that does
-  `uses: VitaliiAndreev/Common-PowerShell/.github/actions/lint-workflows@<sha>`
+  `uses: Klark-Morrigan/Common-PowerShell/.github/actions/lint-workflows@<sha>`
   resolves successfully when invoked from a throwaway branch in a
   consumer repo.
 
@@ -322,7 +322,7 @@ becomes a hard dependency on it.
 **Changes (in `Common-DotNet`):**
 - New composite action `.github/actions/lint-workflows-preflight/`
   (single-step wrapper) that does
-  `uses: VitaliiAndreev/Common-PowerShell/.github/actions/lint-workflows@<sha>`,
+  `uses: Klark-Morrigan/Common-PowerShell/.github/actions/lint-workflows@<sha>`,
   pinned to the SHA from Step 5. Wrapping keeps the SHA reference
   in one place rather than duplicated across the local/consumer
   step pair below.
