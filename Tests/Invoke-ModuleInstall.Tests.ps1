@@ -54,6 +54,17 @@ Describe 'Invoke-ModuleInstall' {
             Should -Invoke Import-Module -Times 1 -Exactly
         }
 
+        It 'imports into the global scope so the calling script sees the commands' {
+            # Invoke-ModuleInstall is itself a module function; without
+            # -Global the import would land in this module's session state,
+            # not the caller's, leaving the caller to rely on auto-load
+            # (which resolves wrong when a duplicate exporter exists).
+            Invoke-ModuleInstall -ModuleName 'Foo' -MinimumVersion '1.0.0'
+            Should -Invoke Import-Module -Times 1 -Exactly -ParameterFilter {
+                $Global -eq $true
+            }
+        }
+
         It 'passes the correct module name to Install-Module' {
             Invoke-ModuleInstall -ModuleName 'Foo' -MinimumVersion '1.0.0'
             Should -Invoke Install-Module -Times 1 -Exactly -ParameterFilter {
