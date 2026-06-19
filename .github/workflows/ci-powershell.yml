@@ -1,4 +1,4 @@
-name: CI
+name: ci-powershell
 
 # Reusable CI workflow for PowerShell repos. Two jobs:
 #
@@ -55,7 +55,7 @@ on:
 
 jobs:
   unit:
-    name: Unit (PowerShell 7)
+    name: Unit
     runs-on: windows-latest
 
     # See the integration job for why this is declared at the job level of
@@ -153,7 +153,7 @@ jobs:
           overwrite: true
 
   integration:
-    name: Integration (PowerShell 7) - Docker tests
+    name: Integration - Docker tests
     needs: unit
     runs-on: ubuntu-latest
 
