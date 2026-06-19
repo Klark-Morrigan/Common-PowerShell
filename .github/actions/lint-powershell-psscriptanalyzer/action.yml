@@ -1,0 +1,36 @@
+name: Lint - PSScriptAnalyzer
+description: >
+  Fails the build if PSScriptAnalyzer reports any diagnostic at or above
+  the configured severity for the PowerShell files under source-root.
+  Wraps Invoke-PsScriptAnalyzer.ps1 so this gate can be consumed via
+  `uses:` from any downstream workflow, matching the rest of the
+  Common-PowerShell composite-action shape. The rule set and severity bar
+  live in PSScriptAnalyzerSettings.psd1 next to the script, not here.
+
+inputs:
+  source-root:
+    description: >
+      Root directory of the repo under lint. Typically the
+      `github.workspace` value from the calling workflow. The
+      substitution-expression syntax is intentionally omitted here -
+      composite-action description strings are evaluated at manifest
+      load time, before the `github` context exists, so a literal
+      expression in the description would fail manifest validation
+      with `Unrecognized named-value: github`.
+    required: true
+  shell:
+    description: >
+      Shell to use: 'powershell' for PowerShell 5.1, 'pwsh' for
+      PowerShell 7. Defaults to pwsh to match the rest of the CI bar.
+    required: false
+    default: pwsh
+
+runs:
+  using: composite
+  steps:
+    - shell: ${{ inputs.shell }}
+      # ${{ github.action_path }} is the directory where the runner downloaded
+      # this action's files. Invoke-PsScriptAnalyzer.ps1 and its settings file
+      # are co-located in that same directory.
+      run: |
+        & "${{ github.action_path }}/Invoke-PsScriptAnalyzer.ps1" -SourceRoot '${{ inputs.source-root }}'
