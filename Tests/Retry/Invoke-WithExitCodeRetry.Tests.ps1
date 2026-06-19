@@ -161,8 +161,12 @@ Describe 'Invoke-WithExitCodeRetry - backoff integration' {
     It 'defaults to New-ExponentialBackoffStrategy when -BackoffStrategy is omitted' {
         $script:_observedDelays = @()
         # Shadow Start-Sleep in this scope only - keeps the suite fast and
-        # Pester-version agnostic.
+        # Pester-version agnostic. Suppressed inline (not fleet-wide) so the
+        # rule still guards production code against clobbering a built-in.
         function Start-Sleep {
+            [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+                'PSAvoidOverwritingBuiltInCmdlets', '',
+                Justification = 'Intentional in-scope test double for Start-Sleep.')]
             param([int] $Seconds)
             $script:_observedDelays += $Seconds
         }
@@ -172,7 +176,7 @@ Describe 'Invoke-WithExitCodeRetry - backoff integration' {
             Invoke-WithExitCodeRetry `
                 -MaxAttempts 3 `
                 -ScriptBlock $script:_planBlock | Out-Null
-        } catch { } # exhaustion is expected; we only care about the delays
+        } catch { $null = $_ } # exhaustion is expected; we only care about the delays
 
         # Exponential defaults: 2 * 2^(attempt - 1) capped at 30 -> 2, 4.
         $script:_observedDelays | Should -Be @(2, 4)

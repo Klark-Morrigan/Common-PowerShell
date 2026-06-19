@@ -239,7 +239,12 @@ Describe 'Invoke-WithRetry - backoff integration' {
 
         # Shadow Start-Sleep in this scope only. Pester's Mock would also
         # work, but a local function keeps this file Pester-version agnostic.
+        # Suppressed inline (not fleet-wide) so the rule still guards
+        # production code against clobbering a built-in.
         function Start-Sleep {
+            [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+                'PSAvoidOverwritingBuiltInCmdlets', '',
+                Justification = 'Intentional in-scope test double for Start-Sleep.')]
             param([int] $Seconds)
             $script:_observedDelays += $Seconds
         }
@@ -253,7 +258,7 @@ Describe 'Invoke-WithRetry - backoff integration' {
                     $script:_attempts++
                     throw 'transient'
                 }
-        } catch { } # exhaustion is expected; we only care about the delays
+        } catch { $null = $_ } # exhaustion is expected; we only care about the delays
 
         # Exponential defaults: 2 * 2^(attempt - 1) capped at 30 -> 2, 4.
         $script:_observedDelays | Should -Be @(2, 4)
