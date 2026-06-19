@@ -35,27 +35,20 @@ jobs:
           psd1: 'Common.PowerShell\Common.PowerShell.psd1'
           changelog: CHANGELOG.md
 
-  test-unit:
+  # Unit and integration tests both live in ci-powershell.yml now (the
+  # integration job is gated behind the unit job there), so one caller job
+  # covers what used to be three.
+  test-ci:
     needs: check-version
     if: needs.check-version.outputs.version_is_new == 'true'
     uses: ./.github/workflows/ci-powershell.yml
-
-  test-integration-host:
-    needs: check-version
-    if: needs.check-version.outputs.version_is_new == 'true'
-    uses: ./.github/workflows/ci-powershell-docker-host.yml
-
-  test-integration-target:
-    needs: check-version
-    if: needs.check-version.outputs.version_is_new == 'true'
-    uses: ./.github/workflows/ci-powershell-docker-target.yml
 
   # Tag, publish to PSGallery, and cut the GitHub Release. The module
   # (X.Y.Z) artifact stream gets a Release; the vN actions stream does not.
   # All three steps live in the shared release-tail workflow so consumers
   # reuse exactly this back end - see release-tail.yml.
   release-tail:
-    needs: [ check-version, test-unit, test-integration-host, test-integration-target ]
+    needs: [ check-version, test-ci ]
     if: needs.check-version.outputs.version_is_new == 'true'
     permissions:
       contents: write

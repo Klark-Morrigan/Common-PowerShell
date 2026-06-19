@@ -554,9 +554,7 @@ sibling repos call them via `workflow_call` and `uses:` references to
 
 | Reusable workflow | Purpose |
 |---|---|
-| `ci-powershell.yml` | Static lints (parse gate, bare-`return @()`, PSScriptAnalyzer) then Pester unit tests on Windows |
-| `ci-powershell-docker-host.yml` | Pester integration tests inside a Docker container |
-| `ci-powershell-docker-target.yml` | SSH integration tests against a Docker target |
+| `ci-powershell.yml` | `unit` job (static lints - parse gate, bare-`return @()`, PSScriptAnalyzer - then Pester unit tests on Windows) plus an `integration` job gated behind it (`needs: unit`) that runs Docker-host and SSH-target Pester integration tests on Ubuntu; each integration shape is scanned first and skipped when the repo has no tests for it |
 | `tag.yml` | Creates a git tag from the manifest version |
 | `publish.yml` | Publishes a module directory to PSGallery |
 
@@ -639,9 +637,7 @@ Common-PowerShell/
 |  |  |- lint-powershell-psscriptanalyzer/  # PSScriptAnalyzer gate: full rule set (settings .psd1 = rule SSOT)
 |  |  `- publish/
 |  `- workflows/                        # Reusable workflows (canonical)
-|     |- ci-powershell.yml
-|     |- ci-powershell-docker-host.yml
-|     |- ci-powershell-docker-target.yml
+|     |- ci-powershell.yml              # unit + integration (Docker) jobs; integration needs unit
 |     |- tag.yml
 |     |- publish.yml
 |     |- release.yml
