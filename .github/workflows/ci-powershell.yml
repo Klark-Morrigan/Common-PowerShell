@@ -45,9 +45,11 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      - name: Check out caller repository
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
 
-      - if: github.repository != 'Klark-Morrigan/Common-PowerShell'
+      - name: Stage Common-PowerShell composites
+        if: github.repository != 'Klark-Morrigan/Common-PowerShell'
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           repository: Klark-Morrigan/Common-PowerShell
@@ -74,22 +76,24 @@ jobs:
       # caught only on the next PR. Fast feedback is preferred over closing
       # that narrow window. The parse gate does not carry the same risk: it
       # delegates to the platform parser, so its custom surface is tiny.
-      - if: github.repository == 'Klark-Morrigan/Common-PowerShell'
+      - name: lint-powershell-parses (self)
+        if: github.repository == 'Klark-Morrigan/Common-PowerShell'
         uses: ./.github/actions/lint-powershell-parses
         with:
           source-root: ${{ github.workspace }}
-
-      - if: github.repository != 'Klark-Morrigan/Common-PowerShell'
+      - name: lint-powershell-parses (consumer)
+        if: github.repository != 'Klark-Morrigan/Common-PowerShell'
         uses: ./.powershell-common/.github/actions/lint-powershell-parses
         with:
           source-root: ${{ github.workspace }}
 
-      - if: github.repository == 'Klark-Morrigan/Common-PowerShell'
+      - name: lint-no-bare-return-empty-array (self)
+        if: github.repository == 'Klark-Morrigan/Common-PowerShell'
         uses: ./.github/actions/lint-no-bare-return-empty-array
         with:
           source-root: ${{ github.workspace }}
-
-      - if: github.repository != 'Klark-Morrigan/Common-PowerShell'
+      - name: lint-no-bare-return-empty-array (consumer)
+        if: github.repository != 'Klark-Morrigan/Common-PowerShell'
         uses: ./.powershell-common/.github/actions/lint-no-bare-return-empty-array
         with:
           source-root: ${{ github.workspace }}
@@ -99,20 +103,22 @@ jobs:
       # heaviest of the three, yet still cheaper than the behavioural unit
       # run it precedes. Its rule set and severity bar live in the action's
       # PSScriptAnalyzerSettings.psd1, not in this workflow.
-      - if: github.repository == 'Klark-Morrigan/Common-PowerShell'
+      - name: lint-powershell-psscriptanalyzer (self)
+        if: github.repository == 'Klark-Morrigan/Common-PowerShell'
         uses: ./.github/actions/lint-powershell-psscriptanalyzer
         with:
           source-root: ${{ github.workspace }}
-
-      - if: github.repository != 'Klark-Morrigan/Common-PowerShell'
+      - name: lint-powershell-psscriptanalyzer (consumer)
+        if: github.repository != 'Klark-Morrigan/Common-PowerShell'
         uses: ./.powershell-common/.github/actions/lint-powershell-psscriptanalyzer
         with:
           source-root: ${{ github.workspace }}
 
-      - if: github.repository == 'Klark-Morrigan/Common-PowerShell'
+      - name: run-unit-tests (self)
+        if: github.repository == 'Klark-Morrigan/Common-PowerShell'
         uses: ./.github/actions/run-unit-tests
-
-      - if: github.repository != 'Klark-Morrigan/Common-PowerShell'
+      - name: run-unit-tests (consumer)
+        if: github.repository != 'Klark-Morrigan/Common-PowerShell'
         uses: ./.powershell-common/.github/actions/run-unit-tests
 
       - name: Upload test results

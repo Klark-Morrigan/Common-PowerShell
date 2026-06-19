@@ -34,9 +34,11 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      - name: Check out caller repository
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
 
-      - if: github.repository != 'Klark-Morrigan/Common-PowerShell'
+      - name: Stage Common-PowerShell composites
+        if: github.repository != 'Klark-Morrigan/Common-PowerShell'
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           repository: Klark-Morrigan/Common-PowerShell
@@ -45,7 +47,8 @@ jobs:
           sparse-checkout: .github/actions
           sparse-checkout-cone-mode: false
 
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      - name: Stage Common-Automation composites
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           repository: Klark-Morrigan/Common-Automation
           ref: master
