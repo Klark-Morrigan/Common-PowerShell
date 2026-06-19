@@ -38,7 +38,7 @@ jobs:
   # Unit and integration tests both live in ci-powershell.yml now (the
   # integration job is gated behind the unit job there), so one caller job
   # covers what used to be three.
-  test-ci:
+  run-ci:
     needs: check-version
     if: needs.check-version.outputs.version_is_new == 'true'
     uses: ./.github/workflows/ci-powershell.yml
@@ -48,7 +48,7 @@ jobs:
   # All three steps live in the shared release-tail workflow so consumers
   # reuse exactly this back end - see release-tail.yml.
   release-tail:
-    needs: [ check-version, test-ci ]
+    needs: [ check-version, run-ci ]
     if: needs.check-version.outputs.version_is_new == 'true'
     permissions:
       contents: write
