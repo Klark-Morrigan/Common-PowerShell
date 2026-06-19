@@ -1,16 +1,20 @@
 name: CI
 
-# Reusable unit-test workflow for PowerShell repos. Delegates to three
+# Reusable unit-test workflow for PowerShell repos. Delegates to four
 # composite actions in Common-PowerShell, run in this order:
 #   - lint-powershell-parses:          syntax floor - fails on any parse
 #                                      error before anything else runs.
 #   - lint-no-bare-return-empty-array: catches the producer-side empty-array
 #                                      footgun on every consumer PR.
+#   - lint-powershell-psscriptanalyzer: full PSScriptAnalyzer rule set - the
+#                                      deeper static layer the parse gate
+#                                      defers to (rules live in its settings).
 #   - run-unit-tests:                  excludes Tests\Integration\ automatically.
-# Both lints lead because they are static sub-second checks - failing
-# fast on them spares the slower behavioural run on a trivial defect.
-# The parse gate leads the lints as the syntax floor (see the step
-# comments for the full why, including the trade-off this order accepts).
+# All three lints lead because they are static checks - failing fast on
+# them spares the slower behavioural run on a trivial defect. The parse
+# gate leads the lints as the syntax floor (see the step comments for the
+# full why, including the trade-off this order accepts); the heavier
+# PSScriptAnalyzer pass runs last of the three.
 # Integration tests run separately via ci-powershell-docker-host.yml and
 # ci-powershell-docker-target.yml.
 #
@@ -88,6 +92,21 @@ jobs:
 
       - if: github.repository != 'Klark-Morrigan/Common-PowerShell'
         uses: ./.powershell-common/.github/actions/lint-no-bare-return-empty-array
+        with:
+          source-root: ${{ github.workspace }}
+
+      # PSScriptAnalyzer runs last of the three static lints: it installs the
+      # analyzer module on demand and walks the whole tree, so it is the
+      # heaviest of the three, yet still cheaper than the behavioural unit
+      # run it precedes. Its rule set and severity bar live in the action's
+      # PSScriptAnalyzerSettings.psd1, not in this workflow.
+      - if: github.repository == 'Klark-Morrigan/Common-PowerShell'
+        uses: ./.github/actions/lint-powershell-psscriptanalyzer
+        with:
+          source-root: ${{ github.workspace }}
+
+      - if: github.repository != 'Klark-Morrigan/Common-PowerShell'
+        uses: ./.powershell-common/.github/actions/lint-powershell-psscriptanalyzer
         with:
           source-root: ${{ github.workspace }}
 

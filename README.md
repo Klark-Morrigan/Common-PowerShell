@@ -554,7 +554,7 @@ sibling repos call them via `workflow_call` and `uses:` references to
 
 | Reusable workflow | Purpose |
 |---|---|
-| `ci-powershell.yml` | Pester unit tests on Windows |
+| `ci-powershell.yml` | Static lints (parse gate, bare-`return @()`, PSScriptAnalyzer) then Pester unit tests on Windows |
 | `ci-powershell-docker-host.yml` | Pester integration tests inside a Docker container |
 | `ci-powershell-docker-target.yml` | SSH integration tests against a Docker target |
 | `tag.yml` | Creates a git tag from the manifest version |
