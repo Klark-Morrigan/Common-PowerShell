@@ -31,7 +31,6 @@ name: CI
 
 on:
   pull_request:
-    branches: [ main, master ]
   workflow_call:
   workflow_dispatch:
 

@@ -20,7 +20,6 @@ name: CI (Docker target)
 
 on:
   pull_request:
-    branches: [ main, master ]
   workflow_call:
   workflow_dispatch:
 
