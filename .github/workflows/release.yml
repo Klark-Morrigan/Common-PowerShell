@@ -15,10 +15,12 @@ jobs:
     outputs:
       version_is_new: ${{ steps.check.outputs.version_is_new }}
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      - name: Check out repository
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           fetch-depth: 0
-      - id: check
+      - name: Check version is new
+        id: check
         uses: ./.github/actions/check-version-is-new
         with:
           psd1: 'Common.PowerShell\Common.PowerShell.psd1'
@@ -26,33 +28,27 @@ jobs:
       # Gate the release on the manifest and changelog agreeing. A new
       # version that has not been promoted in CHANGELOG.md fails here, before
       # any tag or publish, so notes can never lag the release.
-      - if: steps.check.outputs.version_is_new == 'true'
+      - name: Assert changelog version
+        if: steps.check.outputs.version_is_new == 'true'
         uses: ./.github/actions/assert-changelog-version
         with:
           psd1: 'Common.PowerShell\Common.PowerShell.psd1'
           changelog: CHANGELOG.md
 
-  test-unit:
+  # Unit and integration tests both live in ci-powershell.yml now (the
+  # integration job is gated behind the unit job there), so one caller job
+  # covers what used to be three.
+  run-ci:
     needs: check-version
     if: needs.check-version.outputs.version_is_new == 'true'
     uses: ./.github/workflows/ci-powershell.yml
-
-  test-integration-host:
-    needs: check-version
-    if: needs.check-version.outputs.version_is_new == 'true'
-    uses: ./.github/workflows/ci-powershell-docker-host.yml
-
-  test-integration-target:
-    needs: check-version
-    if: needs.check-version.outputs.version_is_new == 'true'
-    uses: ./.github/workflows/ci-powershell-docker-target.yml
 
   # Tag, publish to PSGallery, and cut the GitHub Release. The module
   # (X.Y.Z) artifact stream gets a Release; the vN actions stream does not.
   # All three steps live in the shared release-tail workflow so consumers
   # reuse exactly this back end - see release-tail.yml.
   release-tail:
-    needs: [ check-version, test-unit, test-integration-host, test-integration-target ]
+    needs: [ check-version, run-ci ]
     if: needs.check-version.outputs.version_is_new == 'true'
     permissions:
       contents: write

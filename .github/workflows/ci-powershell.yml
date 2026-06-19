@@ -1,18 +1,31 @@
-name: CI
+name: ci-powershell
 
-# Reusable unit-test workflow for PowerShell repos. Delegates to three
-# composite actions in Common-PowerShell, run in this order:
-#   - lint-powershell-parses:          syntax floor - fails on any parse
-#                                      error before anything else runs.
-#   - lint-no-bare-return-empty-array: catches the producer-side empty-array
-#                                      footgun on every consumer PR.
-#   - run-unit-tests:                  excludes Tests\Integration\ automatically.
-# Both lints lead because they are static sub-second checks - failing
-# fast on them spares the slower behavioural run on a trivial defect.
-# The parse gate leads the lints as the syntax floor (see the step
-# comments for the full why, including the trade-off this order accepts).
-# Integration tests run separately via ci-powershell-docker-host.yml and
-# ci-powershell-docker-target.yml.
+# Reusable CI workflow for PowerShell repos. Two jobs:
+#
+#   unit         - lint + unit tests on windows-latest.
+#   integration  - Docker integration tests on ubuntu-latest, gated
+#                  behind `unit` (needs: unit) so the slower Linux job
+#                  never spins up on a PR whose unit run is already red.
+#
+# The two jobs cannot be a single job with steps: unit tests run on
+# windows-latest (they cover Windows infra), Docker Linux containers
+# need ubuntu-latest, and a job runs on exactly one runner. `needs:`
+# is the cross-OS equivalent of a step's implicit success() guard.
+#
+# Integration covers both Docker test shapes - host-container tests
+# (Tests/Integration.DockerHost) and SSH-to-container target tests
+# (Tests/Integration.DockerTarget) - as sequential steps of one job.
+# No repo carries both shapes, so this serialises nothing that runs in
+# parallel today; it just collapses what used to be two separate
+# ubuntu workflows into one runner. Each shape is scanned first and its
+# run/build steps are skipped when that shape has no tests, so a repo
+# with no integration tests does a couple of sub-second scans and stops -
+# no Docker image is ever built for nothing. The Common-Automation
+# checkout (needed only for the SSH image build) is likewise gated on
+# target tests existing.
+#
+# Consumers call this single workflow; it is the only PowerShell CI
+# entry point.
 #
 # Every `uses:` for a Common-PowerShell composite is a local `./` path,
 # never a fully-qualified `@master` ref. The reason: GitHub Actions
@@ -22,29 +35,40 @@ name: CI
 # refs are resolved at step-execution time after checkout has
 # populated the workspace, so they side-step the eager-resolution
 # failure mode entirely. External consumers get a conditional sparse
-# checkout of Common-PowerShell at master into `.powershell-common/` so the
-# external `./` branch has a populated path.
+# checkout of Common-PowerShell at master into `.powershell-common/` so
+# the external `./` branch has a populated path.
 
 on:
   pull_request:
-    branches: [ main, master ]
   workflow_call:
+    inputs:
+      docker-image:
+        description: >
+          Docker image to run the host integration tests in. Defaults to
+          mcr.microsoft.com/powershell:latest. Consumer repos that install
+          system packages (e.g. openssh-server) during tests can pin a
+          specific Ubuntu variant to avoid apt compatibility issues.
+        required: false
+        type: string
+        default: 'mcr.microsoft.com/powershell:latest'
   workflow_dispatch:
 
 jobs:
-  ci-ps7:
-    name: Unit (PowerShell 7)
+  unit:
+    name: Unit
     runs-on: windows-latest
 
-    # See ci-powershell-docker-host.yml for why this is declared at the
-    # job level of the reusable workflow rather than left to the caller.
+    # See the integration job for why this is declared at the job level of
+    # the reusable workflow rather than left to the caller.
     permissions:
       contents: read
 
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      - name: Check out caller repository
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
 
-      - if: github.repository != 'Klark-Morrigan/Common-PowerShell'
+      - name: Stage Common-PowerShell composites
+        if: github.repository != 'Klark-Morrigan/Common-PowerShell'
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           repository: Klark-Morrigan/Common-PowerShell
@@ -53,9 +77,10 @@ jobs:
           sparse-checkout: .github/actions
           sparse-checkout-cone-mode: false
 
-      # Both lints run BEFORE the unit tests: they are static, sub-second
-      # checks, so failing fast on them spares the cost of the slower
-      # behavioural run when a PR has a trivial syntax or shape defect.
+      # All three lints run BEFORE the unit tests: they are static,
+      # sub-second checks, so failing fast on them spares the cost of the
+      # slower behavioural run when a PR has a trivial syntax or shape
+      # defect.
       #
       # Within the lint pass, the parse gate goes first as the syntax
       # floor: a file that does not parse cannot be meaningfully scanned
@@ -71,30 +96,49 @@ jobs:
       # caught only on the next PR. Fast feedback is preferred over closing
       # that narrow window. The parse gate does not carry the same risk: it
       # delegates to the platform parser, so its custom surface is tiny.
-      - if: github.repository == 'Klark-Morrigan/Common-PowerShell'
+      - name: lint-powershell-parses (self)
+        if: github.repository == 'Klark-Morrigan/Common-PowerShell'
         uses: ./.github/actions/lint-powershell-parses
         with:
           source-root: ${{ github.workspace }}
-
-      - if: github.repository != 'Klark-Morrigan/Common-PowerShell'
+      - name: lint-powershell-parses (consumer)
+        if: github.repository != 'Klark-Morrigan/Common-PowerShell'
         uses: ./.powershell-common/.github/actions/lint-powershell-parses
         with:
           source-root: ${{ github.workspace }}
 
-      - if: github.repository == 'Klark-Morrigan/Common-PowerShell'
+      - name: lint-no-bare-return-empty-array (self)
+        if: github.repository == 'Klark-Morrigan/Common-PowerShell'
         uses: ./.github/actions/lint-no-bare-return-empty-array
         with:
           source-root: ${{ github.workspace }}
-
-      - if: github.repository != 'Klark-Morrigan/Common-PowerShell'
+      - name: lint-no-bare-return-empty-array (consumer)
+        if: github.repository != 'Klark-Morrigan/Common-PowerShell'
         uses: ./.powershell-common/.github/actions/lint-no-bare-return-empty-array
         with:
           source-root: ${{ github.workspace }}
 
-      - if: github.repository == 'Klark-Morrigan/Common-PowerShell'
-        uses: ./.github/actions/run-unit-tests
+      # PSScriptAnalyzer runs last of the three static lints: it installs the
+      # analyzer module on demand and walks the whole tree, so it is the
+      # heaviest of the three, yet still cheaper than the behavioural unit
+      # run it precedes. Its rule set and severity bar live in the action's
+      # PSScriptAnalyzerSettings.psd1, not in this workflow.
+      - name: lint-powershell-psscriptanalyzer (self)
+        if: github.repository == 'Klark-Morrigan/Common-PowerShell'
+        uses: ./.github/actions/lint-powershell-psscriptanalyzer
+        with:
+          source-root: ${{ github.workspace }}
+      - name: lint-powershell-psscriptanalyzer (consumer)
+        if: github.repository != 'Klark-Morrigan/Common-PowerShell'
+        uses: ./.powershell-common/.github/actions/lint-powershell-psscriptanalyzer
+        with:
+          source-root: ${{ github.workspace }}
 
-      - if: github.repository != 'Klark-Morrigan/Common-PowerShell'
+      - name: run-unit-tests (self)
+        if: github.repository == 'Klark-Morrigan/Common-PowerShell'
+        uses: ./.github/actions/run-unit-tests
+      - name: run-unit-tests (consumer)
+        if: github.repository != 'Klark-Morrigan/Common-PowerShell'
         uses: ./.powershell-common/.github/actions/run-unit-tests
 
       - name: Upload test results
@@ -107,3 +151,109 @@ jobs:
           # otherwise collide with the prior attempt's artifact and fail
           # with an annotation-only error (no in-step log line).
           overwrite: true
+
+  integration:
+    name: Integration - Docker tests
+    needs: unit
+    runs-on: ubuntu-latest
+
+    # Explicit read-only token. Without this the job inherits whatever the
+    # caller granted - which is nothing when the calling repo's "Workflow
+    # permissions" default is set to "no permissions" - and actions/checkout
+    # fails with "could not read Username for 'https://github.com'" because
+    # the auth header is empty. Declaring contents:read at the job level of
+    # the reusable workflow overrides the caller's default and lets the
+    # checkout step authenticate via the auto-provided GITHUB_TOKEN.
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out caller repository
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+
+      - name: Stage Common-PowerShell composites
+        if: github.repository != 'Klark-Morrigan/Common-PowerShell'
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          repository: Klark-Morrigan/Common-PowerShell
+          ref: master
+          path: .powershell-common
+          sparse-checkout: .github/actions
+          sparse-checkout-cone-mode: false
+
+      # Scan both Docker test shapes first; their has-tests outputs gate
+      # every run/build step below so a repo without a given shape pays
+      # only a sub-second scan. Each scan pair is duplicated under self /
+      # consumer guards - exactly one of each pair fires.
+      - name: Scan for host integration tests (self)
+        id: scan-host-self
+        if: ${{ github.repository == 'Klark-Morrigan/Common-PowerShell' }}
+        uses: ./.github/actions/scan-integration-tests
+        with:
+          test-dir: Tests/Integration.DockerHost
+          check-module-dir: 'true'
+      - name: Scan for host integration tests (consumer)
+        id: scan-host-consumer
+        if: ${{ github.repository != 'Klark-Morrigan/Common-PowerShell' }}
+        uses: ./.powershell-common/.github/actions/scan-integration-tests
+        with:
+          test-dir: Tests/Integration.DockerHost
+          check-module-dir: 'true'
+
+      - name: Scan for target integration tests (self)
+        id: scan-target-self
+        if: ${{ github.repository == 'Klark-Morrigan/Common-PowerShell' }}
+        uses: ./.github/actions/scan-integration-tests
+        with:
+          test-dir: Tests/Integration.DockerTarget
+      - name: Scan for target integration tests (consumer)
+        id: scan-target-consumer
+        if: ${{ github.repository != 'Klark-Morrigan/Common-PowerShell' }}
+        uses: ./.powershell-common/.github/actions/scan-integration-tests
+        with:
+          test-dir: Tests/Integration.DockerTarget
+
+      # Host-container tests: run inside a Docker container. Skipped unless
+      # the host scan found tests, so no container is started for nothing.
+      - name: Run host integration tests (self)
+        if: ${{ steps.scan-host-self.outputs.has-tests == 'true' }}
+        uses: ./.github/actions/run-integration-tests
+        with:
+          docker-image: ${{ inputs.docker-image || 'mcr.microsoft.com/powershell:latest' }}
+          test-file-paths: ${{ steps.scan-host-self.outputs.test-file-paths }}
+          module-dir: ${{ steps.scan-host-self.outputs.module-dir }}
+      - name: Run host integration tests (consumer)
+        if: ${{ steps.scan-host-consumer.outputs.has-tests == 'true' }}
+        uses: ./.powershell-common/.github/actions/run-integration-tests
+        with:
+          docker-image: ${{ inputs.docker-image || 'mcr.microsoft.com/powershell:latest' }}
+          test-file-paths: ${{ steps.scan-host-consumer.outputs.test-file-paths }}
+          module-dir: ${{ steps.scan-host-consumer.outputs.module-dir }}
+
+      # Target (SSH) tests: Pester runs on the host and connects over SSH to
+      # a purpose-built container. The build-ssh-test-image composite lives
+      # in Common-Automation, so it - and the checkout that stages it - are
+      # gated on target tests existing, keeping the no-target repos free of
+      # both the extra checkout and the image build.
+      - name: Stage Common-Automation composites
+        if: ${{ steps.scan-target-self.outputs.has-tests == 'true' || steps.scan-target-consumer.outputs.has-tests == 'true' }}
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          repository: Klark-Morrigan/Common-Automation
+          ref: master
+          path: .common-automation
+          sparse-checkout: |
+            .github/actions
+            .github/lib
+          sparse-checkout-cone-mode: false
+
+      - name: Build SSH test image
+        if: ${{ steps.scan-target-self.outputs.has-tests == 'true' || steps.scan-target-consumer.outputs.has-tests == 'true' }}
+        uses: ./.common-automation/.github/actions/build-ssh-test-image
+
+      - name: Run SSH integration tests (self)
+        if: ${{ steps.scan-target-self.outputs.has-tests == 'true' }}
+        uses: ./.github/actions/run-ssh-integration-tests
+      - name: Run SSH integration tests (consumer)
+        if: ${{ steps.scan-target-consumer.outputs.has-tests == 'true' }}
+        uses: ./.powershell-common/.github/actions/run-ssh-integration-tests

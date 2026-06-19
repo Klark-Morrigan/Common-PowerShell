@@ -62,13 +62,15 @@ jobs:
     outputs:
       tag_created: ${{ steps.gate.outputs.tag_created }}
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      - name: Check out caller repository
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           # Full history so existing tags are visible to tag-from-manifest
           # and the new tag is reachable by create-github-release.
           fetch-depth: 0
 
-      - if: github.repository != 'Klark-Morrigan/Common-PowerShell'
+      - name: Stage Common-PowerShell composites
+        if: github.repository != 'Klark-Morrigan/Common-PowerShell'
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           repository: Klark-Morrigan/Common-PowerShell
@@ -77,7 +79,8 @@ jobs:
           sparse-checkout: .github/actions
           sparse-checkout-cone-mode: false
 
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      - name: Stage Common-Automation composites
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           repository: Klark-Morrigan/Common-Automation
           ref: master
@@ -88,12 +91,14 @@ jobs:
           sparse-checkout-cone-mode: false
 
       # --- Tag the manifest version ----------------------------------------
-      - id: tag-self
+      - name: tag-from-manifest (self)
+        id: tag-self
         if: github.repository == 'Klark-Morrigan/Common-PowerShell'
         uses: ./.github/actions/tag-from-manifest
         with:
           psd1: ${{ inputs.psd1 }}
-      - id: tag-consumer
+      - name: tag-from-manifest (consumer)
+        id: tag-consumer
         if: github.repository != 'Klark-Morrigan/Common-PowerShell'
         uses: ./.powershell-common/.github/actions/tag-from-manifest
         with:
@@ -102,7 +107,8 @@ jobs:
       # Collapse the self/consumer tag outputs into one value so the
       # downstream guards do not have to repeat the OR. Publish and the
       # GitHub Release only run when a brand new tag was just pushed.
-      - id: gate
+      - name: Resolve tag-created gate
+        id: gate
         shell: bash
         env:
           TAG_CREATED: >-
@@ -111,19 +117,22 @@ jobs:
         run: echo "tag_created=$TAG_CREATED" >> "$GITHUB_OUTPUT"
 
       # --- Publish to PSGallery --------------------------------------------
-      - if: steps.gate.outputs.tag_created == 'true'
+      - name: Assert PSGALLERY_API_KEY secret
+        if: steps.gate.outputs.tag_created == 'true'
         uses: ./.common-automation/.github/actions/assert-secret
         with:
           value: ${{ secrets.PSGALLERY_API_KEY }}
           name: PSGALLERY_API_KEY
-      - if: >-
+      - name: publish (self)
+        if: >-
           steps.gate.outputs.tag_created == 'true' &&
           github.repository == 'Klark-Morrigan/Common-PowerShell'
         uses: ./.github/actions/publish
         with:
           module-path: ${{ inputs.module-path }}
           api-key: ${{ secrets.PSGALLERY_API_KEY }}
-      - if: >-
+      - name: publish (consumer)
+        if: >-
           steps.gate.outputs.tag_created == 'true' &&
           github.repository != 'Klark-Morrigan/Common-PowerShell'
         uses: ./.powershell-common/.github/actions/publish
@@ -136,7 +145,8 @@ jobs:
       # assert-changelog gate pinned to the manifest (== the tag just pushed).
       # Skipped when changelog is empty so repos without a CHANGELOG.md can
       # still reuse the tag + publish tail.
-      - if: steps.gate.outputs.tag_created == 'true' && inputs.changelog != ''
+      - name: create-github-release
+        if: steps.gate.outputs.tag_created == 'true' && inputs.changelog != ''
         uses: ./.common-automation/.github/actions/create-github-release
         with:
           changelog: ${{ inputs.changelog }}

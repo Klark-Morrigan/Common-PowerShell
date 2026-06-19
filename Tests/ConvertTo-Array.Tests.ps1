@@ -70,8 +70,11 @@ Describe 'ConvertTo-Array' {
                 @()
                 'string'
             )
-            foreach ($input in $inputs) {
-                { (ConvertTo-Array $input).Count } | Should -Not -Throw
+            # Loop variable is deliberately not named $input: that is a
+            # PowerShell automatic variable, and assigning to it shadows the
+            # pipeline enumerator (PSAvoidAssignmentToAutomaticVariable).
+            foreach ($candidate in $inputs) {
+                { (ConvertTo-Array $candidate).Count } | Should -Not -Throw
             }
         }
     }
