@@ -24,6 +24,21 @@ function Invoke-Publish {
 
     $modulePath = $psd1.DirectoryName
     $manifest = Import-PowerShellDataFile $psd1.FullName
+
+    # PSGallery is the source of truth for publication state. If this exact
+    # version is already on the gallery (a prior run published but a later step
+    # failed, or this step is being retried), republishing would fail with a
+    # duplicate-version error. Skipping instead makes publish idempotent so the
+    # whole release pipeline can be safely re-run. Find-Module errors when the
+    # version is absent; SilentlyContinue turns that into "not published".
+    $alreadyPublished = Find-Module -Name $psd1.BaseName `
+        -RequiredVersion $manifest.ModuleVersion `
+        -Repository PSGallery -ErrorAction SilentlyContinue
+    if ($alreadyPublished) {
+        Write-Host "$($psd1.BaseName) $($manifest.ModuleVersion) is already on PSGallery - skipping publish."
+        return
+    }
+
     if ($manifest.ContainsKey('RequiredModules')) {
         foreach ($req in $manifest.RequiredModules) {
             $name = if ($req -is [hashtable]) { $req.ModuleName } else { $req }
