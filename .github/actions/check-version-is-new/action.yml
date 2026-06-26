@@ -1,9 +1,10 @@
 name: Check if manifest version is new
 description: >
-  Reads ModuleVersion from the .psd1 manifest and checks whether a matching
-  git tag already exists. Outputs version_is_new=true when the version has
-  not yet been tagged, false otherwise. Requires fetch-depth: 0 in the
-  calling checkout step so all existing tags are visible.
+  Reads ModuleVersion from the .psd1 manifest and checks whether that version
+  is already published to PSGallery. Outputs version_is_new=true when the
+  version is not yet on the gallery, false otherwise. PSGallery - not the git
+  tag - is the source of truth, so a prior run that tagged but failed to publish
+  is reported as still needing a release and the pipeline can self-heal on retry.
 
 inputs:
   psd1:
@@ -14,20 +15,18 @@ inputs:
 
 outputs:
   version_is_new:
-    description: "'true' if no tag exists for the current ModuleVersion, 'false' otherwise."
+    description: "'true' if the current ModuleVersion is not yet on PSGallery, 'false' otherwise."
     value: ${{ steps.check.outputs.version_is_new }}
 
 runs:
   using: composite
   steps:
-    - id: check
+    - name: Check if manifest version is published
+      id: check
       shell: pwsh
+      # ${{ github.action_path }} resolves to the runner's clone of this action's
+      # source, so the function file is available regardless of the caller's
+      # working directory. Mirrors tag-from-manifest's dot-source pattern.
       run: |
-        $version = (Import-PowerShellDataFile '${{ inputs.psd1 }}').ModuleVersion
-        $isNew = -not (git tag -l $version)
-        "version_is_new=$($isNew.ToString().ToLower())" >> $env:GITHUB_OUTPUT
-        Write-Host $(if ($isNew) {
-            "Version $version is new - proceeding."
-        } else {
-            "Version $version already tagged - skipping."
-        })
+        . "${{ github.action_path }}\Test-ManifestVersionIsNew.ps1"
+        Test-ManifestVersionIsNew -Psd1 '${{ inputs.psd1 }}' | Out-Null

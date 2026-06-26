@@ -177,13 +177,22 @@ streams may drift; they are not required to align.
 3. Open a PR, get it reviewed and merged
 
 On merge, [.github/workflows/release.yml](.github/workflows/release.yml)
-checks the version is new, **asserts the manifest and changelog agree on
-`X.Y.Z`** (the `assert-changelog-version` action - the release fails here if
-you forgot to promote the changelog), runs the unit + integration tests, and
-creates a matching `X.Y.Z` git tag. It then, in parallel, publishes to
-PSGallery and creates a **GitHub Release** whose body is the `X.Y.Z`
+checks the version is **not yet on PSGallery** (the gallery, not the git tag,
+is the source of truth for "already released"), **asserts the manifest and
+changelog agree on `X.Y.Z`** (the `assert-changelog-version` action - the
+release fails here if you forgot to promote the changelog), runs the unit +
+integration tests, then creates a matching `X.Y.Z` git tag, publishes to
+PSGallery, and creates a **GitHub Release** whose body is the `X.Y.Z`
 CHANGELOG.md section (Common-Automation's `create-github-release`). No manual
 tagging or release-notes step required.
+
+Each tail step is idempotent against its real artifact, so the pipeline is
+**self-healing**: if publish fails, the tag stays but the version is still
+absent from the gallery, so simply re-running the release (or
+`Re-run failed jobs`) re-publishes instead of skipping. Publish self-skips a
+version already on the gallery, and the GitHub Release is skipped if it already
+exists - so a retry never double-publishes or errors on a duplicate, and a
+stuck tag can no longer block a release.
 
 Add entries under `[Unreleased]` as you merge feature work, so step 2 at
 release time is only the rename. GitHub Releases attach to this module
@@ -613,6 +622,7 @@ Common-PowerShell/
 |  |- Invoke-TagFromManifest.Tests.ps1
 |  |- Limit-TestLogRetention.Tests.ps1  # run-unit-tests\lib helper (+ .IntegrationTests)
 |  |- Run-IntegrationTests.Tests.ps1
+|  |- Test-ManifestVersionIsNew.Tests.ps1 # check-version-is-new gate helper tests
 |  |- Test-NoBareReturnEmptyArray.Tests.ps1
 |  |- Test-PowerShellParses.Tests.ps1   # Syntax-gate lint helper tests
 |  |- Invoke-PsScriptAnalyzer.Tests.ps1 # PSScriptAnalyzer-gate lint helper tests
