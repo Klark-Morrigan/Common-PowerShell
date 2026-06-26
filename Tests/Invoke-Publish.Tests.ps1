@@ -4,6 +4,13 @@ BeforeAll {
 
 Describe 'Invoke-Publish' {
 
+    # Default the gallery lookup to "not published" so the existing publish-path
+    # cases proceed as before. The dedicated context below overrides this to
+    # exercise the idempotency skip.
+    BeforeEach {
+        Mock Find-Module { }
+    }
+
     Context 'no .psd1 found under SearchRoot' {
         It 'throws' {
             New-Item -ItemType Directory -Path "$TestDrive\empty" -Force | Out-Null
@@ -30,6 +37,36 @@ Describe 'Invoke-Publish' {
 
         It 'calls Publish-Module once' {
             Should -Invoke Publish-Module -Times 1 -Exactly
+        }
+    }
+
+    Context 'version already published to PSGallery' {
+        BeforeAll {
+            $modDir = New-Item -ItemType Directory -Path "$TestDrive\published\MyModule" -Force
+            "@{ ModuleVersion = '1.0.0' }" | Set-Content "$($modDir.FullName)\MyModule.psd1"
+            $env:API_KEY = 'test-key'
+        }
+        AfterAll  { Remove-Item Env:\API_KEY -ErrorAction SilentlyContinue }
+        BeforeEach {
+            # A returned object means the exact version is already on the gallery.
+            Mock Find-Module { [PSCustomObject]@{ Name = 'MyModule'; Version = '1.0.0' } }
+            Mock Install-Module {}
+            Mock Publish-Module {}
+            Invoke-Publish -SearchRoot "$TestDrive\published"
+        }
+
+        It 'does not publish' {
+            Should -Not -Invoke Publish-Module
+        }
+
+        It 'does not install dependencies' {
+            Should -Not -Invoke Install-Module
+        }
+
+        It 'queries the gallery for the manifest version' {
+            Should -Invoke Find-Module -Times 1 -Exactly -ParameterFilter {
+                $Name -eq 'MyModule' -and $RequiredVersion -eq '1.0.0'
+            }
         }
     }
 
