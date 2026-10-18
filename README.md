@@ -884,6 +884,7 @@ Common-PowerShell/
 |  |- Invoke-PsScriptAnalyzer.Tests.ps1 # PSScriptAnalyzer-gate lint helper tests
 |  |- Get-LintExcludePatterns.Tests.ps1 # Shared lint function tests, one file per function
 |  |- Get-LintFiles.Tests.ps1
+|  |- Test-LintPathExcluded.Tests.ps1
 |  `- Integration.DockerHost/           # Integration tests - run in Docker only
 |- .github/
 |  |- actions/                          # Reusable composite actions (canonical)
