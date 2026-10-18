@@ -882,6 +882,7 @@ Common-PowerShell/
 |  |- Test-NoBareReturnEmptyArray.Tests.ps1
 |  |- Test-PowerShellParses.Tests.ps1   # Syntax-gate lint helper tests
 |  |- Invoke-PsScriptAnalyzer.Tests.ps1 # PSScriptAnalyzer-gate lint helper tests
+|  |- Get-LintExcludePatterns.Tests.ps1 # Shared lint function tests, one file per function
 |  `- Integration.DockerHost/           # Integration tests - run in Docker only
 |- .github/
 |  |- actions/                          # Reusable composite actions (canonical)
@@ -902,6 +903,7 @@ Common-PowerShell/
 |  |  |- run-ssh-integration-tests/
 |  |  |- scan-integration-tests/
 |  |  |- tag-from-manifest/
+|  |  |- lib/                             # Functions the three lints share, one per file, dot-sourced
 |  |  `- Helpers.ps1                      # Shared PS helpers dot-sourced by action scripts
 |  `- workflows/                       # Reusable workflows (canonical)
 |     |- ci-powershell.yml                # unit + integration (Docker) jobs; integration needs unit
