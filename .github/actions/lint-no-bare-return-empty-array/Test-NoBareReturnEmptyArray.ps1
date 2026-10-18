@@ -47,19 +47,20 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# Shared lint functions, one per file under ..\lib\.
+. ([IO.Path]::Combine($PSScriptRoot, '..', 'lib', 'Get-LintExcludePatterns.ps1'))
+. ([IO.Path]::Combine($PSScriptRoot, '..', 'lib', 'Test-LintPathExcluded.ps1'))
+. ([IO.Path]::Combine($PSScriptRoot, '..', 'lib', 'Get-LintFiles.ps1'))
+. ([IO.Path]::Combine($PSScriptRoot, '..', 'lib', 'Write-LintReport.ps1'))
+
 # Regex documented in the file header. Defined here (script scope) so
 # both the function and any future helpers see exactly the same shape;
 # bare-string duplication would invite drift.
 $script:BareReturnEmptyArrayPattern = '^\s*return\s+@\(\s*\)\s*$'
 
-# Path patterns that must never be linted. .ci-common is the sibling
-# checkout of Common-PowerShell created by ci-powershell.yml;
-# excluded so the lint applies only to the caller repo's own
-# production code. Tests/ is excluded because fixtures and mock
-# helpers legitimately construct empty arrays in places that look
-# like returns.
-$script:DefaultLintExcludePatterns = @(
-    '^\.ci-common([\\/]|$)',
+# The shared exclusions plus Tests/: fixtures and mock helpers
+# legitimately construct empty arrays in places that look like returns.
+$script:BareReturnExcludePatterns = (Get-LintExcludePatterns) + @(
     '(^|[\\/])Tests([\\/]|$)'
 )
 
@@ -79,23 +80,11 @@ function Get-BareReturnLintFiles {
         [Parameter(Mandatory)]
         [string] $SourceRoot,
 
-        [string[]] $ExcludePatterns = $script:DefaultLintExcludePatterns
+        [string[]] $ExcludePatterns = $script:BareReturnExcludePatterns
     )
 
-    $root = (Resolve-Path -LiteralPath $SourceRoot).Path
+    $files = Get-LintFiles -SourceRoot $SourceRoot -Extensions '.ps1' -ExcludePatterns $ExcludePatterns
 
-    $files = Get-ChildItem -Path $root -Recurse -File -Filter '*.ps1' |
-        Where-Object {
-            $rel = $_.FullName.Substring($root.Length).TrimStart('\','/')
-            foreach ($p in $ExcludePatterns) {
-                if ($rel -match $p) { return $false }
-            }
-            $true
-        }
-
-    # Comma-operator wrap so a repo with exactly one production file
-    # still gets an array: a lone FileInfo has no .Count under strict
-    # mode.
     return ,@($files)
 }
 
@@ -116,7 +105,7 @@ function Find-BareReturnEmptyArrayHits {
         [Parameter(Mandatory)]
         [string] $SourceRoot,
 
-        [string[]] $ExcludePatterns = $script:DefaultLintExcludePatterns
+        [string[]] $ExcludePatterns = $script:BareReturnExcludePatterns
     )
 
     $files = Get-BareReturnLintFiles -SourceRoot $SourceRoot -ExcludePatterns $ExcludePatterns
@@ -132,29 +121,18 @@ function Find-BareReturnEmptyArrayHits {
 # exposed without firing the scan. Mirrors Run-IntegrationTests.ps1.
 if ($MyInvocation.InvocationName -ne '.') {
 
-    $hits = Find-BareReturnEmptyArrayHits -SourceRoot $SourceRoot
+    # Files-scanned count for the OK line is computed here (not in the
+    # hit finder) because that function's contract is "return hits", not
+    # "report progress".
+    $files = Get-BareReturnLintFiles -SourceRoot $SourceRoot
+    $hits  = Find-BareReturnEmptyArrayHits -SourceRoot $SourceRoot
 
-    if (@($hits).Count -eq 0) {
+    $exitCode = Write-LintReport -Hits $hits `
+        -PassMessage "no bare 'return @()' in production .ps1 (files scanned: $($files.Count))." `
+        -DescribeHit {
+            "Bare 'return @()' unrolls to `$null at the caller. Use 'return ,@()' to preserve array shape."
+        } `
+        -FindingLabel "bare 'return @()' occurrence(s)"
 
-        # Files-scanned count for the OK line is computed here (not in
-        # the hit finder) because that function's contract is "return
-        # hits", not "report progress".
-        $files     = Get-BareReturnLintFiles -SourceRoot $SourceRoot
-        $fileCount = $files.Count
-
-        Write-Host "Lint OK: no bare 'return @()' in production .ps1 (files scanned: $fileCount)."
-        exit 0
-    }
-
-    foreach ($h in $hits) {
-
-        Write-Host (
-            "::error file=$($h.Path),line=$($h.LineNumber)::" +
-            "Bare 'return @()' unrolls to `$null at the caller. " +
-            "Use 'return ,@()' to preserve array shape."
-        )
-    }
-
-    Write-Host "Lint FAILED: $(@($hits).Count) bare 'return @()' occurrence(s) found."
-    exit 1
+    exit $exitCode
 }

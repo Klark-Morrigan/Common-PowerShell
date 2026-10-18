@@ -50,21 +50,14 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# Extensions the language parser understands. Kept in script scope so
-# both the scan and the OK-line file count read the exact same set;
-# bare-literal duplication would invite drift.
-$script:ParsablePowerShellExtensions = @('.ps1', '.psm1', '.psd1')
+# Shared lint functions, one per file under ..\lib\.
+. ([IO.Path]::Combine($PSScriptRoot, '..', 'lib', 'Get-LintExcludePatterns.ps1'))
+. ([IO.Path]::Combine($PSScriptRoot, '..', 'lib', 'Test-LintPathExcluded.ps1'))
+. ([IO.Path]::Combine($PSScriptRoot, '..', 'lib', 'Get-LintFiles.ps1'))
+. ([IO.Path]::Combine($PSScriptRoot, '..', 'lib', 'Write-LintReport.ps1'))
 
-# Path patterns that must never be parsed. .ci-common is the sibling
-# checkout of Common-PowerShell created by ci-powershell.yml; excluded
-# so the gate applies only to the caller repo's own files and a parse
-# error upstream is not blamed on the consumer PR. Unlike the
-# bare-return lint, Tests/ is NOT excluded here: a malformed test file
-# is itself a defect this gate should catch before Pester discovery
-# fails with a noisier error.
-$script:DefaultParseExcludePatterns = @(
-    '^\.ci-common([\\/]|$)'
-)
+# Extensions the language parser understands.
+$script:ParsablePowerShellExtensions = @('.ps1', '.psm1', '.psd1')
 
 function Get-ParseLintFiles {
     <#
@@ -74,7 +67,10 @@ function Get-ParseLintFiles {
 
     .DESCRIPTION
         One list feeds both the scan and the OK line's files-scanned
-        count, so the two cannot disagree on what was linted.
+        count, so the two cannot disagree on what was linted. Unlike the
+        bare-return lint, Tests/ is parsed too: a malformed test file is
+        itself a defect this gate should catch before Pester discovery
+        fails with a noisier error.
     #>
     [CmdletBinding()]
     [OutputType([object[]])]
@@ -82,23 +78,12 @@ function Get-ParseLintFiles {
         [Parameter(Mandatory)]
         [string] $SourceRoot,
 
-        [string[]] $ExcludePatterns = $script:DefaultParseExcludePatterns
+        [string[]] $ExcludePatterns = (Get-LintExcludePatterns)
     )
 
-    $root = (Resolve-Path -LiteralPath $SourceRoot).Path
+    $files = Get-LintFiles -SourceRoot $SourceRoot -Extensions $script:ParsablePowerShellExtensions `
+        -ExcludePatterns $ExcludePatterns
 
-    $files = Get-ChildItem -Path $root -Recurse -File |
-        Where-Object { $script:ParsablePowerShellExtensions -contains $_.Extension } |
-        Where-Object {
-            $rel = $_.FullName.Substring($root.Length).TrimStart('\','/')
-            foreach ($p in $ExcludePatterns) {
-                if ($rel -match $p) { return $false }
-            }
-            $true
-        }
-
-    # Comma-operator wrap so a repo with exactly one file still gets an
-    # array: a lone FileInfo has no .Count under strict mode.
     return ,@($files)
 }
 
@@ -119,7 +104,7 @@ function Find-ParseErrorHits {
         [Parameter(Mandatory)]
         [string] $SourceRoot,
 
-        [string[]] $ExcludePatterns = $script:DefaultParseExcludePatterns
+        [string[]] $ExcludePatterns = (Get-LintExcludePatterns)
     )
 
     $files = Get-ParseLintFiles -SourceRoot $SourceRoot -ExcludePatterns $ExcludePatterns
@@ -153,24 +138,16 @@ function Find-ParseErrorHits {
 # exposed without firing the scan. Mirrors Test-NoBareReturnEmptyArray.ps1.
 if ($MyInvocation.InvocationName -ne '.') {
 
-    $hits = Find-ParseErrorHits -SourceRoot $SourceRoot
+    # Files-scanned count for the OK line is computed here (not in the
+    # hit finder) because that function's contract is "return hits", not
+    # "report progress".
+    $files = Get-ParseLintFiles -SourceRoot $SourceRoot
+    $hits  = Find-ParseErrorHits -SourceRoot $SourceRoot
 
-    if (@($hits).Count -eq 0) {
-        # Files-scanned count for the OK line is computed here (not in
-        # the hit finder) because that function's contract is "return
-        # hits", not "report progress".
-        $files     = Get-ParseLintFiles -SourceRoot $SourceRoot
-        $fileCount = $files.Count
-        Write-Host "Lint OK: all PowerShell files parse cleanly (files scanned: $fileCount)."
-        exit 0
-    }
+    $exitCode = Write-LintReport -Hits $hits `
+        -PassMessage "all PowerShell files parse cleanly (files scanned: $($files.Count))." `
+        -DescribeHit { param($hit) "PowerShell parse error: $($hit.Message)" } `
+        -FindingLabel 'PowerShell parse error(s)'
 
-    foreach ($h in $hits) {
-        Write-Host (
-            "::error file=$($h.Path),line=$($h.LineNumber)::" +
-            "PowerShell parse error: $($h.Message)"
-        )
-    }
-    Write-Host "Lint FAILED: $(@($hits).Count) PowerShell parse error(s) found."
-    exit 1
+    exit $exitCode
 }

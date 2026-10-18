@@ -54,14 +54,10 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# Path patterns that must never be analysed. .ci-common is the sibling
-# checkout of Common-PowerShell created by ci-powershell.yml; excluded so
-# the gate applies only to the caller repo's own files and an upstream
-# finding is not blamed on the consumer PR. Kept identical to the parse
-# gate's exclusion set so the two static gates scan the same surface.
-$script:DefaultAnalyzerExcludePatterns = @(
-    '^\.ci-common([\\/]|$)'
-)
+# Shared lint functions, one per file under ..\lib\.
+. ([IO.Path]::Combine($PSScriptRoot, '..', 'lib', 'Get-LintExcludePatterns.ps1'))
+. ([IO.Path]::Combine($PSScriptRoot, '..', 'lib', 'Test-LintPathExcluded.ps1'))
+. ([IO.Path]::Combine($PSScriptRoot, '..', 'lib', 'Write-LintReport.ps1'))
 
 function Install-ScriptAnalyzerIfMissing {
     <#
@@ -110,7 +106,7 @@ function Find-ScriptAnalyzerHits {
         [Parameter(Mandatory)]
         [string] $SettingsPath,
 
-        [string[]] $ExcludePatterns = $script:DefaultAnalyzerExcludePatterns
+        [string[]] $ExcludePatterns = (Get-LintExcludePatterns)
     )
 
     $root = (Resolve-Path -LiteralPath $SourceRoot).Path
@@ -122,13 +118,10 @@ function Find-ScriptAnalyzerHits {
     $diagnostics = Invoke-ScriptAnalyzer -Path $root -Recurse -Settings $SettingsPath
 
     $hits = foreach ($d in $diagnostics) {
-        $rel = $d.ScriptPath.Substring($root.Length).TrimStart('\', '/')
 
-        $excluded = $false
-        foreach ($p in $ExcludePatterns) {
-            if ($rel -match $p) { $excluded = $true; break }
+        if (Test-LintPathExcluded -RootPath $root -FilePath $d.ScriptPath -ExcludePatterns $ExcludePatterns) {
+            continue
         }
-        if ($excluded) { continue }
 
         [pscustomobject]@{
             Path       = $d.ScriptPath
@@ -155,17 +148,10 @@ if ($MyInvocation.InvocationName -ne '.') {
 
     $hits = Find-ScriptAnalyzerHits -SourceRoot $SourceRoot -SettingsPath $SettingsPath
 
-    if (@($hits).Count -eq 0) {
-        Write-Host 'Lint OK: PSScriptAnalyzer reported no diagnostics.'
-        exit 0
-    }
+    $exitCode = Write-LintReport -Hits $hits `
+        -PassMessage 'PSScriptAnalyzer reported no diagnostics.' `
+        -DescribeHit { param($hit) "PSScriptAnalyzer [$($hit.Severity)] $($hit.RuleName): $($hit.Message)" } `
+        -FindingLabel 'PSScriptAnalyzer diagnostic(s)'
 
-    foreach ($h in $hits) {
-        Write-Host (
-            "::error file=$($h.Path),line=$($h.LineNumber)::" +
-            "PSScriptAnalyzer [$($h.Severity)] $($h.RuleName): $($h.Message)"
-        )
-    }
-    Write-Host "Lint FAILED: $(@($hits).Count) PSScriptAnalyzer diagnostic(s) found."
-    exit 1
+    exit $exitCode
 }
