@@ -883,6 +883,7 @@ Common-PowerShell/
 |  |- Test-PowerShellParses.Tests.ps1   # Syntax-gate lint helper tests
 |  |- Invoke-PsScriptAnalyzer.Tests.ps1 # PSScriptAnalyzer-gate lint helper tests
 |  |- Get-LintExcludePatterns.Tests.ps1 # Shared lint function tests, one file per function
+|  |- Get-LintFiles.Tests.ps1
 |  `- Integration.DockerHost/           # Integration tests - run in Docker only
 |- .github/
 |  |- actions/                          # Reusable composite actions (canonical)
