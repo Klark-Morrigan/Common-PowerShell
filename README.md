@@ -885,6 +885,7 @@ Common-PowerShell/
 |  |- Get-LintExcludePatterns.Tests.ps1 # Shared lint function tests, one file per function
 |  |- Get-LintFiles.Tests.ps1
 |  |- Test-LintPathExcluded.Tests.ps1
+|  |- Write-LintReport.Tests.ps1
 |  `- Integration.DockerHost/           # Integration tests - run in Docker only
 |- .github/
 |  |- actions/                          # Reusable composite actions (canonical)
@@ -906,6 +907,10 @@ Common-PowerShell/
 |  |  |- scan-integration-tests/
 |  |  |- tag-from-manifest/
 |  |  |- lib/                             # Functions the three lints share, one per file, dot-sourced
+|  |  |  |- Get-LintExcludePatterns.ps1     #   Paths no lint scans (the staged .powershell-common/)
+|  |  |  |- Get-LintFiles.ps1               #   Files to lint, by extension, exclusions applied
+|  |  |  |- Test-LintPathExcluded.ps1       #   Whether a path falls under an exclusion
+|  |  |  `- Write-LintReport.ps1            #   Prints the verdict and annotations, returns the exit code
 |  |  `- Helpers.ps1                      # Shared PS helpers dot-sourced by action scripts
 |  `- workflows/                       # Reusable workflows (canonical)
 |     |- ci-powershell.yml                # unit + integration (Docker) jobs; integration needs unit
