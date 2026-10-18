@@ -11,13 +11,18 @@ BeforeAll {
             [Parameter(Mandatory)] [string] $Name,
             [Parameter(Mandatory)] [hashtable] $Files
         )
+
         $root = Join-Path $TestDrive $Name
+
         foreach ($rel in $Files.Keys) {
+
             $full = Join-Path $root $rel
             $dir  = Split-Path $full -Parent
+
             if (-not (Test-Path $dir)) {
                 New-Item -ItemType Directory -Path $dir -Force | Out-Null
             }
+
             Set-Content -Path $full -Value $Files[$rel] -Encoding UTF8
         }
         return $root
@@ -162,15 +167,51 @@ function B {
     Context 'return-shape contract' {
 
         It 'returns an array (not $null) when there are zero hits' {
+
             $root = New-LintFixture -Name 'empty' -Files @{
                 'X.ps1' = "function X { 'noop' }"
             }
+
             $result = Find-BareReturnEmptyArrayHits -SourceRoot $root
+
             # Eats its own dogfood: the function must use ,@() so the
             # caller's .Count works on zero matches.
             ($null -eq $result) | Should -BeFalse
             ($result -is [array]) | Should -BeTrue
             $result.Count | Should -Be 0
         }
+    }
+}
+
+Describe 'Get-BareReturnLintFiles' {
+
+    It 'returns a single production file as a one-element array' {
+
+        $root = New-LintFixture -Name 'oneFile' -Files @{
+            'Only.ps1'            = "function O { 'ok' }"
+            'Tests\Only.Tests.ps1' = "Describe 'O' { }"
+        }
+
+        $files = Get-BareReturnLintFiles -SourceRoot $root
+        ($files -is [array]) | Should -BeTrue
+        $files.Count         | Should -Be 1
+    }
+}
+
+Describe 'Test-NoBareReturnEmptyArray.ps1' {
+
+    It 'reports a repo with a single production file as clean' {
+
+        $root = New-LintFixture -Name 'oneFileRun' -Files @{
+            'Only.ps1'            = "function O { 'ok' }"
+            'Tests\Only.Tests.ps1' = "Describe 'O' { }"
+        }
+
+        # A child process, because the script body exits. It runs under
+        # the script's own strict mode, where a lone file's count throws
+        # unless the file list keeps its array shape.
+        $output = & pwsh -NoProfile -File $Script:ScriptPath -SourceRoot $root
+        $LASTEXITCODE | Should -Be 0
+        $output       | Should -Be "Lint OK: no bare 'return @()' in production .ps1 (files scanned: 1)."
     }
 }

@@ -63,16 +63,15 @@ $script:DefaultLintExcludePatterns = @(
     '(^|[\\/])Tests([\\/]|$)'
 )
 
-function Find-BareReturnEmptyArrayHits {
+function Get-BareReturnLintFiles {
     <#
     .SYNOPSIS
-        Returns hit records (Path, LineNumber, Line) for every bare
-        `return @()` in production .ps1 under -SourceRoot.
+        Returns every production .ps1 under -SourceRoot that the lint
+        scans.
 
     .DESCRIPTION
-        Pure: no Write-Host, no exit. Lets tests assert on the result
-        without parsing stdout. The script body below emits and exits;
-        this function does neither.
+        One list feeds both the scan and the OK line's files-scanned
+        count, so the two cannot disagree on what was linted.
     #>
     [CmdletBinding()]
     [OutputType([object[]])]
@@ -94,6 +93,34 @@ function Find-BareReturnEmptyArrayHits {
             $true
         }
 
+    # Comma-operator wrap so a repo with exactly one production file
+    # still gets an array: a lone FileInfo has no .Count under strict
+    # mode.
+    return ,@($files)
+}
+
+function Find-BareReturnEmptyArrayHits {
+    <#
+    .SYNOPSIS
+        Returns hit records (Path, LineNumber, Line) for every bare
+        `return @()` in production .ps1 under -SourceRoot.
+
+    .DESCRIPTION
+        Pure: no Write-Host, no exit. Lets tests assert on the result
+        without parsing stdout. The script body below emits and exits;
+        this function does neither.
+    #>
+    [CmdletBinding()]
+    [OutputType([object[]])]
+    param(
+        [Parameter(Mandatory)]
+        [string] $SourceRoot,
+
+        [string[]] $ExcludePatterns = $script:DefaultLintExcludePatterns
+    )
+
+    $files = Get-BareReturnLintFiles -SourceRoot $SourceRoot -ExcludePatterns $ExcludePatterns
+
     # Comma-operator wrap so a single hit (or zero hits) round-trips as
     # an array; otherwise the caller's @().Count would scalar-throw.
     # Eats its own dogfood.
@@ -108,29 +135,26 @@ if ($MyInvocation.InvocationName -ne '.') {
     $hits = Find-BareReturnEmptyArrayHits -SourceRoot $SourceRoot
 
     if (@($hits).Count -eq 0) {
+
         # Files-scanned count for the OK line is computed here (not in
-        # the function) because the function's contract is "return
+        # the hit finder) because that function's contract is "return
         # hits", not "report progress".
-        $root      = (Resolve-Path -LiteralPath $SourceRoot).Path
-        $fileCount = (Get-ChildItem -Path $root -Recurse -File -Filter '*.ps1' |
-            Where-Object {
-                $rel = $_.FullName.Substring($root.Length).TrimStart('\','/')
-                foreach ($p in $script:DefaultLintExcludePatterns) {
-                    if ($rel -match $p) { return $false }
-                }
-                $true
-            }).Count
+        $files     = Get-BareReturnLintFiles -SourceRoot $SourceRoot
+        $fileCount = $files.Count
+
         Write-Host "Lint OK: no bare 'return @()' in production .ps1 (files scanned: $fileCount)."
         exit 0
     }
 
     foreach ($h in $hits) {
+
         Write-Host (
             "::error file=$($h.Path),line=$($h.LineNumber)::" +
             "Bare 'return @()' unrolls to `$null at the caller. " +
             "Use 'return ,@()' to preserve array shape."
         )
     }
+
     Write-Host "Lint FAILED: $(@($hits).Count) bare 'return @()' occurrence(s) found."
     exit 1
 }

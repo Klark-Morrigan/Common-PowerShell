@@ -66,16 +66,15 @@ $script:DefaultParseExcludePatterns = @(
     '^\.ci-common([\\/]|$)'
 )
 
-function Find-ParseErrorHits {
+function Get-ParseLintFiles {
     <#
     .SYNOPSIS
-        Returns hit records (Path, LineNumber, Message) for every parse
-        error in PowerShell files under -SourceRoot.
+        Returns every PowerShell file under -SourceRoot that the gate
+        parses.
 
     .DESCRIPTION
-        Pure: no Write-Host, no exit. Lets tests assert on the result
-        without parsing stdout. The script body below emits and exits;
-        this function does neither.
+        One list feeds both the scan and the OK line's files-scanned
+        count, so the two cannot disagree on what was linted.
     #>
     [CmdletBinding()]
     [OutputType([object[]])]
@@ -97,6 +96,33 @@ function Find-ParseErrorHits {
             }
             $true
         }
+
+    # Comma-operator wrap so a repo with exactly one file still gets an
+    # array: a lone FileInfo has no .Count under strict mode.
+    return ,@($files)
+}
+
+function Find-ParseErrorHits {
+    <#
+    .SYNOPSIS
+        Returns hit records (Path, LineNumber, Message) for every parse
+        error in PowerShell files under -SourceRoot.
+
+    .DESCRIPTION
+        Pure: no Write-Host, no exit. Lets tests assert on the result
+        without parsing stdout. The script body below emits and exits;
+        this function does neither.
+    #>
+    [CmdletBinding()]
+    [OutputType([object[]])]
+    param(
+        [Parameter(Mandatory)]
+        [string] $SourceRoot,
+
+        [string[]] $ExcludePatterns = $script:DefaultParseExcludePatterns
+    )
+
+    $files = Get-ParseLintFiles -SourceRoot $SourceRoot -ExcludePatterns $ExcludePatterns
 
     $hits = foreach ($file in $files) {
         # ParseFile reports every error it can recover past, not just the
@@ -131,18 +157,10 @@ if ($MyInvocation.InvocationName -ne '.') {
 
     if (@($hits).Count -eq 0) {
         # Files-scanned count for the OK line is computed here (not in
-        # the function) because the function's contract is "return
+        # the hit finder) because that function's contract is "return
         # hits", not "report progress".
-        $root      = (Resolve-Path -LiteralPath $SourceRoot).Path
-        $fileCount = (Get-ChildItem -Path $root -Recurse -File |
-            Where-Object { $script:ParsablePowerShellExtensions -contains $_.Extension } |
-            Where-Object {
-                $rel = $_.FullName.Substring($root.Length).TrimStart('\','/')
-                foreach ($p in $script:DefaultParseExcludePatterns) {
-                    if ($rel -match $p) { return $false }
-                }
-                $true
-            }).Count
+        $files     = Get-ParseLintFiles -SourceRoot $SourceRoot
+        $fileCount = $files.Count
         Write-Host "Lint OK: all PowerShell files parse cleanly (files scanned: $fileCount)."
         exit 0
     }
