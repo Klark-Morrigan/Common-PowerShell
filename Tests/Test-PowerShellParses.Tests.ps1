@@ -123,28 +123,28 @@ unterminated here-string
 
     Context 'exclusions' {
 
-        It 'skips files under .ci-common/' {
+        It 'skips files under .powershell-common/' {
 
             $root = New-ParseFixture -Name 'excCommon' -Files @{
                 'src\Good.ps1'             = "function G { 'ok' }"
-                '.ci-common\SomeAction\X.ps1' = 'function X { '
+                '.powershell-common\SomeAction\X.ps1' = 'function X { '
             }
 
             # The broken file lives under the sibling checkout - excluded.
             (Find-ParseErrorHits -SourceRoot $root).Count | Should -Be 0
         }
 
-        It 'still flags broken files outside .ci-common when both exist' {
+        It 'still flags broken files outside .powershell-common when both exist' {
 
             $root = New-ParseFixture -Name 'mixed' -Files @{
                 'src\Bad.ps1'              = 'function B { '
-                '.ci-common\SomeAction\X.ps1' = 'function X { '
+                '.powershell-common\SomeAction\X.ps1' = 'function X { '
             }
 
             $hits = Find-ParseErrorHits -SourceRoot $root
             $hits.Count                                            | Should -BeGreaterThan 0
             @($hits | Where-Object Path -Like '*src*Bad.ps1').Count | Should -BeGreaterThan 0
-            @($hits | Where-Object Path -Like '*ci-common*').Count  | Should -Be 0
+            @($hits | Where-Object Path -Like '*powershell-common*').Count  | Should -Be 0
         }
     }
 

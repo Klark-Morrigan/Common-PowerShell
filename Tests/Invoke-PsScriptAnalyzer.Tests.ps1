@@ -108,23 +108,23 @@ Describe 'Find-ScriptAnalyzerHits' {
 
     Context 'exclusions' {
 
-        It 'skips files under .ci-common/' {
+        It 'skips files under .powershell-common/' {
             $root = New-AnalyzerFixture -Name 'excCommon' -Files @{
                 'src\Clean.ps1'               = $Script:CleanFn
-                '.ci-common\SomeAction\X.ps1' = $Script:WriteHostFn
+                '.powershell-common\SomeAction\X.ps1' = $Script:WriteHostFn
             }
             # The only violation lives under the sibling checkout - excluded.
             (Find-ScriptAnalyzerHits -SourceRoot $root -SettingsPath $Script:SettingsPath).Count | Should -Be 0
         }
 
-        It 'still flags violations outside .ci-common when both exist' {
+        It 'still flags violations outside .powershell-common when both exist' {
             $root = New-AnalyzerFixture -Name 'mixed' -Files @{
                 'src\Has.ps1'                 = $Script:WriteHostFn
-                '.ci-common\SomeAction\X.ps1' = $Script:WriteHostFn
+                '.powershell-common\SomeAction\X.ps1' = $Script:WriteHostFn
             }
             $hits = Find-ScriptAnalyzerHits -SourceRoot $root -SettingsPath $Script:SettingsPath
             @($hits | Where-Object Path -Like '*src*Has.ps1').Count | Should -BeGreaterThan 0
-            @($hits | Where-Object Path -Like '*ci-common*').Count  | Should -Be 0
+            @($hits | Where-Object Path -Like '*powershell-common*').Count  | Should -Be 0
         }
     }
 

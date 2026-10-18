@@ -129,12 +129,12 @@ function MockHelper { return @() }
             (Find-BareReturnEmptyArrayHits -SourceRoot $root).Count | Should -Be 0
         }
 
-        It 'skips files under .ci-common/' {
+        It 'skips files under .powershell-common/' {
             $root = New-LintFixture -Name 'excCommon' -Files @{
                 'src\Good.ps1' = @"
 function G { return ,@() }
 "@
-                '.ci-common\SomeAction\X.ps1' = @"
+                '.powershell-common\SomeAction\X.ps1' = @"
 function X { return @() }
 "@
             }
