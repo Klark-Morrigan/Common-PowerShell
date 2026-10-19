@@ -39,14 +39,14 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+. ([IO.Path]::Combine($PSScriptRoot, '..', 'lib', 'Find-ModuleDirectory.ps1'))
+
 $files = @(Get-ChildItem $TestDir -Filter '*.Tests.ps1' `
                -Recurse -ErrorAction SilentlyContinue)
 
 $moduleDir = $null
 if ($CheckModuleDir) {
-    $moduleDir = Get-ChildItem -Path . -Directory |
-        Where-Object { Test-Path (Join-Path $_.FullName "$($_.Name).psd1") } |
-        Select-Object -First 1
+    $moduleDir = Find-ModuleDirectory -RootPath (Get-Location).Path
 }
 
 $hasTests      = $files.Count -gt 0 -or $null -ne $moduleDir

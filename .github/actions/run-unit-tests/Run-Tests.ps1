@@ -66,7 +66,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-. ([IO.Path]::Combine($PSScriptRoot, '..', 'Helpers.ps1'))
+. ([IO.Path]::Combine($PSScriptRoot, '..', 'lib', 'Find-ModuleDirectory.ps1'))
 
 # ---------------------------------------------------------------------------
 # Helper functions - one per file under lib\, dot-sourced so they are available
