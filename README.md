@@ -809,7 +809,7 @@ own YAML and bash surfaces, the same way sibling repos consume the table above:
 
 Run the same checks locally via three sibling shims (Docker required; each shims to
 Common-Automation's engine - pointed at this repo through
-`COMMON_AUTOMATION_TARGET_REPO` - so local and CI cannot drift). `Common-Automation`
+`CONSUMER_REPO_PATH` - so local and CI cannot drift). `Common-Automation`
 must be a sibling checkout (`..\Common-Automation`):
 
 - `scripts/run-ci-yaml-and-bash.sh` (+ `.bat`) - PRIMARY local entry: runs the full
