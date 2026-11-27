@@ -2,7 +2,8 @@ BeforeAll {
 
     . "$PSScriptRoot\..\.github\actions\lib\Write-LintReport.ps1"
 
-    $script:DescribeHit = { param($hit) "found $($hit.Path)" }
+    # The message leaves the path out, so only the report itself can name it.
+    $script:DescribeHit = { param($hit) "problem on line $($hit.LineNumber)" }
 }
 
 Describe 'Write-LintReport' {
@@ -48,9 +49,9 @@ Describe 'Write-LintReport' {
         @($printed |
             ForEach-Object { "$_" }) |
             Should -Be @(
-                '::error file=C:\repo\A.ps1,line=3::found C:\repo\A.ps1'
+                '::error file=C:\repo\A.ps1,line=3::problem on line 3'
                 '  C:\repo\A.ps1:3'
-                '::error file=C:\repo\B.ps1,line=7::found C:\repo\B.ps1'
+                '::error file=C:\repo\B.ps1,line=7::problem on line 7'
                 '  C:\repo\B.ps1:7'
                 'Lint FAILED: 2 finding(s) found.'
             )
