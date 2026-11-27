@@ -912,7 +912,7 @@ Common-PowerShell/
 |  |     |- Get-LintExcludePatterns.ps1     #   Paths no lint scans (the staged .powershell-common/)
 |  |     |- Get-LintFiles.ps1               #   Files to lint, by extension, exclusions applied
 |  |     |- Test-LintPathExcluded.ps1       #   Whether a path falls under an exclusion
-|  |     `- Write-LintReport.ps1            #   Prints the verdict and annotations, returns the exit code
+|  |     `- Write-LintReport.ps1            #   Prints the verdict and each annotation with its file and line, returns the exit code
 |  `- workflows/                       # Reusable workflows (canonical)
 |     |- ci-powershell.yml                # unit + integration (Docker) jobs; integration needs unit
 |     |- tag.yml
