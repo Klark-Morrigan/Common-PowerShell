@@ -1,9 +1,17 @@
 # Prints a lint's verdict and returns the exit code its script ends with: 0
 # when there are no hits, 1 otherwise.
-#   Each hit becomes a GitHub Actions error annotation on its file and line, so
-#   it shows in the pull request's diff view; a local run prints the same lines
-#   plain. Every hit carries Path and LineNumber; DescribeHit turns one hit
-#   into the annotation's message.
+#
+# Each hit becomes a GitHub Actions error annotation on its file and line, so
+# it shows in the pull request's diff view; a local run prints the same lines
+# plain.
+#
+# Every hit carries Path and LineNumber; DescribeHit turns one hit
+# into the annotation's message.
+#
+# Under each annotation goes a plain line with the file and line again:
+# GitHub's log view keeps only an annotation's message, so without it the
+# job log says what is wrong and not where.
+#
 function Write-LintReport {
 
     [CmdletBinding()]
@@ -32,6 +40,7 @@ function Write-LintReport {
     foreach ($hit in $Hits) {
 
         Write-Host "::error file=$($hit.Path),line=$($hit.LineNumber)::$(& $DescribeHit $hit)"
+        Write-Host "  $($hit.Path):$($hit.LineNumber)"
     }
 
     Write-Host "Lint FAILED: $($Hits.Count) $FindingLabel found."

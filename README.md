@@ -809,7 +809,7 @@ own YAML and bash surfaces, the same way sibling repos consume the table above:
 
 Run the same checks locally via three sibling shims (Docker required; each shims to
 Common-Automation's engine - pointed at this repo through
-`COMMON_AUTOMATION_TARGET_REPO` - so local and CI cannot drift). `Common-Automation`
+`CONSUMER_REPO_PATH` - so local and CI cannot drift). `Common-Automation`
 must be a sibling checkout (`..\Common-Automation`):
 
 - `scripts/run-ci-yaml-and-bash.sh` (+ `.bat`) - PRIMARY local entry: runs the full
@@ -912,7 +912,7 @@ Common-PowerShell/
 |  |     |- Get-LintExcludePatterns.ps1     #   Paths no lint scans (the staged .powershell-common/)
 |  |     |- Get-LintFiles.ps1               #   Files to lint, by extension, exclusions applied
 |  |     |- Test-LintPathExcluded.ps1       #   Whether a path falls under an exclusion
-|  |     `- Write-LintReport.ps1            #   Prints the verdict and annotations, returns the exit code
+|  |     `- Write-LintReport.ps1            #   Prints the verdict and each annotation with its file and line, returns the exit code
 |  `- workflows/                       # Reusable workflows (canonical)
 |     |- ci-powershell.yml                # unit + integration (Docker) jobs; integration needs unit
 |     |- tag.yml
